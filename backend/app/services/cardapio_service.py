@@ -1,7 +1,7 @@
 """
 PROVISORIO: simula a consulta de pratos enquanto o modulo de cardapio nao fica pronto.
 
-Troque `buscar_prato` por uma consulta real ao cardapio (do colega). Ela deve devolver um dict com:
+Troque `buscar_prato` por uma consulta real ao cardapio. Ela deve devolver um dict com:
     id (str), nome (str), preco (float), disponivel (bool)
 ou None se o prato nao existir.
 """
@@ -15,5 +15,6 @@ PRATOS = {
 }
 
 
-async def buscar_prato(prato_id: str) -> dict | None:
-    return PRATOS.get(prato_id)
+class CardapioService:
+    async def buscar_prato(self, prato_id: str) -> dict | None:
+        return PRATOS.get(prato_id)

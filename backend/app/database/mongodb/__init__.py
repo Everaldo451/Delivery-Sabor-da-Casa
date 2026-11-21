@@ -1,7 +1,7 @@
 import os
 
 from dotenv import load_dotenv
-from motor.motor_asyncio import AsyncIOMotorClient
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
 load_dotenv()
 
@@ -9,4 +9,6 @@ load_dotenv()
 client = AsyncIOMotorClient(os.getenv("MONGO_URL", "mongodb://localhost:27017"), tz_aware=True)
 db = client[os.getenv("MONGO_DB", "sabordacasa")]
 
-pedidos_col = db["pedidos"]
+
+def get_mongo_db() -> AsyncIOMotorDatabase:
+    return db

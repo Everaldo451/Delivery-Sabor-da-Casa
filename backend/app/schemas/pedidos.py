@@ -1,28 +1,8 @@
 from datetime import datetime
-from enum import Enum
 
 from pydantic import BaseModel, Field
 
-
-class StatusPedido(str, Enum):
-    recebido = "recebido"
-    em_preparo = "em_preparo"
-    saiu_para_entrega = "saiu_para_entrega"
-    entregue = "entregue"
-
-
-class FormaPagamento(str, Enum):
-    pix = "pix"
-    cartao = "cartao"
-    dinheiro = "dinheiro"
-
-
-class EnderecoEntrega(BaseModel):
-    rua: str
-    numero: str
-    bairro: str
-    cep: str | None = None
-    complemento: str | None = None
+from app.entities.pedido import EnderecoEntrega, FormaPagamento, StatusPedido
 
 
 # ---------- entrada ----------
