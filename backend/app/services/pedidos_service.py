@@ -4,6 +4,8 @@ from fastapi import HTTPException
 
 from app.entities.pedido import ItemPedido, Pedido, StatusPedido
 from app.entities.usuario import Usuario
+from app.factories.payment_strategy_factory import PaymentStrategyFactory
+from app.factories.pedido_status_strategy_factory import PedidoStatusStrategyFactory
 from app.repositories.pedido_repository import PedidosRepository
 from app.schemas.pedidos import (
     AtualizarStatus,
@@ -13,9 +15,6 @@ from app.schemas.pedidos import (
 )
 from app.repositories.zona_entrega_repository import ZonaEntregaRepository
 from app.services.cardapio_service import CardapioService
-from app.services.user_service import UserService
-
-ORDEM_STATUS = list(StatusPedido)
 
 
 class PedidoService:
@@ -24,12 +23,18 @@ class PedidoService:
         pedidos_repository: PedidosRepository,
         zona_entrega_repository: ZonaEntregaRepository,
         cardapio_service: CardapioService,
-        user_service: UserService,
+        payment_strategy_factory: PaymentStrategyFactory | None = None,
+        pedido_status_strategy_factory: PedidoStatusStrategyFactory | None = None,
     ) -> None:
         self._pedidos_repository = pedidos_repository
         self._zona_entrega_repository = zona_entrega_repository
         self._cardapio_service = cardapio_service
-        self._user_service = user_service
+        self._payment_strategy_factory = (
+            payment_strategy_factory or PaymentStrategyFactory()
+        )
+        self._pedido_status_strategy_factory = (
+            pedido_status_strategy_factory or PedidoStatusStrategyFactory()
+        )
 
     def _para_saida(self, pedido: Pedido) -> PedidoOut:
         if pedido.id is None:
@@ -80,6 +85,7 @@ class PedidoService:
         total = round(subtotal - desconto + taxa_entrega, 2)
 
         agora = datetime.now(timezone.utc)
+        strategy = self._payment_strategy_factory.criar(dados.forma_pagamento)
         pedido = Pedido(
             user_id=usuario.id,
             itens=itens,
@@ -89,7 +95,7 @@ class PedidoService:
             total=total,
             endereco_entrega=dados.endereco_entrega,
             forma_pagamento=dados.forma_pagamento,
-            status=StatusPedido.recebido,
+            status=strategy.status_inicial_pedido(),
             criado_em=agora,
             atualizado_em=agora,
         )
@@ -127,21 +133,46 @@ class PedidoService:
         return resultado
 
     async def atualizar_status(
-        self, pedido_id: str, dados: AtualizarStatus, usuario: Usuario
+        self, pedido_id: str, dados: AtualizarStatus
     ) -> PedidoOut:
-        self._user_service.check_admin(usuario)
+        pedido = await self._buscar_por_id(pedido_id)
+        strategy = self._pedido_status_strategy_factory.criar(pedido.status)
+        if not strategy.permite_transicao(dados.status):
+            raise HTTPException(
+                409,
+                f"Transicao de status nao permitida: "
+                f"{pedido.status.value} -> {dados.status.value}",
+            )
+        atualizado = await self._salvar_status(pedido_id, dados.status)
+        return self._para_saida(atualizado)
 
-        atual = await self._pedidos_repository.buscar_por_id(pedido_id)
-        if atual is None:
+    async def confirmar_pagamento(self, pedido_id: str) -> PedidoOut:
+        pedido = await self._buscar_por_id(pedido_id)
+        strategy = self._pedido_status_strategy_factory.criar(pedido.status)
+        if not strategy.permite_transicao(
+            StatusPedido.recebido,
+            pagamento_aprovado=True,
+        ):
+            return self._para_saida(pedido)
+        atualizado = await self._salvar_status(pedido_id, StatusPedido.recebido)
+        return self._para_saida(atualizado)
+
+    async def _buscar_por_id(self, pedido_id: str) -> Pedido:
+        pedido = await self._pedidos_repository.buscar_por_id(pedido_id)
+        if pedido is None:
             raise HTTPException(404, "Pedido nao encontrado")
+        return pedido
 
-        if ORDEM_STATUS.index(dados.status) <= ORDEM_STATUS.index(atual.status):
-            raise HTTPException(409, "O status so pode avancar (nao volta nem repete)")
-
-        agora = datetime.now(timezone.utc)
+    async def _salvar_status(
+        self,
+        pedido_id: str,
+        status: StatusPedido,
+    ) -> Pedido:
         atualizado = await self._pedidos_repository.atualizar_status(
-            pedido_id, dados.status, agora
+            pedido_id,
+            status,
+            datetime.now(timezone.utc),
         )
         if atualizado is None:
             raise HTTPException(404, "Pedido nao encontrado")
-        return self._para_saida(atualizado)
+        return atualizado

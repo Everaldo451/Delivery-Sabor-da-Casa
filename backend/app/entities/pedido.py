@@ -7,10 +7,12 @@ from app.types.geografia import CoordenadaGeografica
 
 
 class StatusPedido(str, Enum):
+    aguardando_pagamento = "aguardando_pagamento"
     recebido = "recebido"
     em_preparo = "em_preparo"
     saiu_para_entrega = "saiu_para_entrega"
     entregue = "entregue"
+    cancelado = "cancelado"
 
 
 class FormaPagamento(str, Enum):

@@ -12,20 +12,17 @@ from app.schemas.pedidos import (
 from app.services.auth_service import AuthService
 from app.services.cardapio_service import CardapioService
 from app.services.pedidos_service import PedidoService
-from app.services.user_service import UserService
 
 router = APIRouter(prefix="/pedidos", tags=["Pedidos"])
 
 auth_service = AuthService()
 cardapio_service = CardapioService()
-user_service = UserService()
 pedidos_repository = PedidosRepository()
 zona_entrega_repository = ZonaEntregaRepository()
 pedido_service = PedidoService(
     pedidos_repository,
     zona_entrega_repository,
     cardapio_service,
-    user_service,
 )
 
 
@@ -70,11 +67,14 @@ async def itens_para_repetir(
     return await service.itens_para_repetir(pedido_id, usuario)
 
 
-@router.patch("/{pedido_id}/status", response_model=PedidoOut)
+@router.patch(
+    "/{pedido_id}/status",
+    response_model=PedidoOut,
+    dependencies=[Depends(auth_service.usuario_admin)],
+)
 async def atualizar_status(
     pedido_id: str,
     dados: AtualizarStatus,
-    usuario: Usuario = Depends(auth_service.usuario_logado),
     service: PedidoService = Depends(get_pedido_service),
 ):
-    return await service.atualizar_status(pedido_id, dados, usuario)
+    return await service.atualizar_status(pedido_id, dados)
