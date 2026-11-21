@@ -154,7 +154,7 @@ def test_checkout_usa_strategy_de_pagamento(
                 method=method,
                 simulation_result=resultado,
             ),
-            Usuario(id="1"),
+            Usuario(id="1", email="cliente@example.com", senha_hash=""),
         )
     )
 

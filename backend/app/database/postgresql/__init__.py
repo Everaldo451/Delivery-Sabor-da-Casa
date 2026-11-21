@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from sqlmodel import Session, SQLModel, create_engine
 
 from app.database.postgresql.models.payment import PaymentModel as _PaymentModel
+from app.database.postgresql.models.user import UserModel as _UserModel
 
 __all__ = ["DATABASE_URL", "criar_tabelas", "engine", "get_session"]
 
