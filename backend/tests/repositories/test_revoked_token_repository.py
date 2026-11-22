@@ -28,3 +28,20 @@ async def test_contem_consulta_se_o_token_esta_revogado_no_redis():
 
     assert resultado is True
     redis_client.exists.assert_awaited_once_with("auth:revoked:jti-1")
+
+
+async def test_inserir_se_ausente_faz_consumo_atomico_do_refresh_token():
+    redis_client = Mock()
+    redis_client.set = AsyncMock(return_value=True)
+    expiracao = datetime.now(timezone.utc) + timedelta(days=7)
+    repository = RevokedTokenRepository(redis_client)
+
+    resultado = await repository.inserir_se_ausente("refresh-1", expiracao)
+
+    assert resultado is True
+    redis_client.set.assert_awaited_once_with(
+        "auth:revoked:refresh-1",
+        "1",
+        exat=int(expiracao.timestamp()),
+        nx=True,
+    )

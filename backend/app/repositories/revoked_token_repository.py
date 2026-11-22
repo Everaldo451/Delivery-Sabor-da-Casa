@@ -19,6 +19,16 @@ class RevokedTokenRepository:
             exat=int(expires_at.timestamp()),
         )
 
+    async def inserir_se_ausente(self, jti: str, expires_at: datetime) -> bool:
+        """Revoga uma vez só; útil para consumir refresh tokens atomicamente."""
+        resultado = await self._client.set(
+            self._key(jti),
+            "1",
+            exat=int(expires_at.timestamp()),
+            nx=True,
+        )
+        return bool(resultado)
+
     @staticmethod
     def _key(jti: str) -> str:
         return f"auth:revoked:{jti}"

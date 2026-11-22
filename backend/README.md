@@ -66,8 +66,8 @@ Ele possui valores padrao de teste para `POSTGRES_PASSWORD` e `JWT_SECRET_KEY`,
 entao nao precisa dessas variaveis no `.env`.
 
 ```powershell
-docker compose --env-file .env -f docker/docker-compose.test.yaml up --build --abort-on-container-exit --exit-code-from app
-docker compose --env-file .env -f docker/docker-compose.test.yaml down
+docker compose -f docker/docker-compose.test.yaml up --build --abort-on-container-exit --exit-code-from app
+docker compose -f docker/docker-compose.test.yaml down
 ```
 
 Os testes estao separados por responsabilidade em `tests/routers`,
@@ -82,8 +82,15 @@ Os dois Compose devem ser executados a partir de `backend`. O container da API
 usa os nomes dos servicos como hosts dos bancos; a porta `8000` e publicada no
 host e as portas dos bancos permanecem apenas na rede interna do Compose.
 
-Autenticacao: `POST /auth/login` recebe `email` e `senha`; envie o JWT retornado
-no header `Authorization: Bearer <token>`. `POST /auth/logout` revoga esse token.
+Autenticacao: `POST /auth/login` recebe `email` e `senha` e retorna um access
+token (30 minutos) e um refresh token (7 dias). Envie o access token no header
+`Authorization: Bearer <access_token>`. Quando ele expirar, envie
+`POST /auth/refresh` com `{"refresh_token": "<refresh_token>"}` para receber um
+novo par de tokens; o refresh token anterior e revogado durante a rotacao.
+Para encerrar a sessao, chame `POST /auth/logout` com o access token no header e
+o refresh token no corpo: `{"refresh_token": "<refresh_token>"}`. O refresh
+token e opcional para compatibilidade, mas sem ele somente o access token atual
+e revogado.
 
 Carrinho: as rotas autenticadas em `/carrinho` guardam os itens no Redis, na chave
 `carrinho:<user_id>`. `GET /carrinho` consulta (e retorna vazio se ainda nao existir),
