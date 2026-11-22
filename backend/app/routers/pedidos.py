@@ -11,6 +11,8 @@ from app.schemas.pedidos import (
 )
 from app.services.auth_service import AuthService
 from app.services.cardapio_service import CardapioService
+from app.services.cupom_service import CupomService
+from app.services.fidelidade_service import FidelidadeService
 from app.services.pedidos_service import PedidoService
 
 router = APIRouter(prefix="/pedidos", tags=["Pedidos"])
@@ -23,6 +25,8 @@ pedido_service = PedidoService(
     pedidos_repository,
     zona_entrega_repository,
     cardapio_service,
+    cupom_service=CupomService(),
+    fidelidade_service=FidelidadeService(),
 )
 
 

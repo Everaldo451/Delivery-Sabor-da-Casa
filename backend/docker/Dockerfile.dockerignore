@@ -5,6 +5,15 @@ venv
 **/venv
 **/__pycache__
 **/*.py[cod]
+**/.pytest_cache
+**/.coverage
+**/.coverage.*
+**/htmlcov
+**/coverage.xml
+**/.uv-cache
+**/.mypy_cache
+**/.ruff_cache
+**/.hypothesis
 .env
 .env.*
 tests

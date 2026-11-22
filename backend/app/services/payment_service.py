@@ -9,6 +9,7 @@ from app.repositories.payment_repository import PaymentRepository
 from app.repositories.pedido_repository import PedidosRepository
 from app.schemas.payments import CheckoutCreate, PaymentOut
 from app.services.pedidos_service import PedidoService
+from app.services.fidelidade_service import FidelidadeService
 
 
 class PaymentService:
@@ -18,6 +19,7 @@ class PaymentService:
         pedidos_repository: PedidosRepository,
         pedido_service: PedidoService,
         payment_strategy_factory: PaymentStrategyFactory | None = None,
+        fidelidade_service: FidelidadeService | None = None,
     ) -> None:
         self._payment_repository = payment_repository
         self._pedidos_repository = pedidos_repository
@@ -25,6 +27,7 @@ class PaymentService:
             payment_strategy_factory or PaymentStrategyFactory()
         )
         self._pedido_service = pedido_service
+        self._fidelidade_service = fidelidade_service
 
     def _para_saida(self, payment: Payment) -> PaymentOut:
         if payment.id is None:
@@ -64,6 +67,12 @@ class PaymentService:
         payment = self._payment_repository.inserir(payment)
 
         if status == PaymentStatus.aprovado:
+            if self._fidelidade_service is not None and pedido.id is not None:
+                self._fidelidade_service.creditar_por_pedido(
+                    usuario.id,
+                    pedido.id,
+                    Decimal(str(pedido.total)),
+                )
             await self._pedido_service.confirmar_pagamento(dados.pedido_id)
 
         return self._para_saida(payment)

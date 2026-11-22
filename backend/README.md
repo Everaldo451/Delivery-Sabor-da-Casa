@@ -22,6 +22,34 @@ python -m uv run alembic upgrade head
 python -m uv run uvicorn app.main:app --reload
 ```
 
+### Seed local do PostgreSQL
+
+Com o PostgreSQL ativo e as migrations aplicadas, configure
+`SEED_ADMIN_PASSWORD` e `SEED_USER_PASSWORD` no `backend/.env` e execute:
+
+```powershell
+python -m uv run python -m seed.postgres.seed
+```
+
+O seed cria/atualiza um administrador (`admin@delivery.local`), um cliente
+(`cliente@delivery.local`), quatro categorias e 40 pratos de demonstração. Os
+Compose definem `admin12345` e `usuario12345` como senhas padrão do seed; no
+Compose de produção, configure senhas próprias no `.env` antes de executá-lo.
+Os registros estão em `seed/postgres/*.json`; as senhas nunca ficam nos arquivos
+de dados e são gravadas no PostgreSQL com hash bcrypt. A execução é idempotente.
+Uma imagem padrão opcional pode ser colocada em
+`seed/postgres/assets/prato-padrao.png`; sem esse arquivo, os pratos são criados
+sem imagem.
+
+### Seed local do MongoDB
+
+Com o MongoDB ativo, execute da pasta `backend` para importar ou atualizar as
+sete zonas de entrega do arquivo `seed/mongodb/zonas_jp.json`:
+
+```powershell
+python -m uv run python -m seed.mongodb.seed
+```
+
 As alterações do schema PostgreSQL são versionadas com Alembic. Para um banco
 existente criado pelo app antes da adoção do Alembic, marque a revisão-base e
 aplique as migrations pendentes:
@@ -62,8 +90,10 @@ O Compose de teste instala as dependencias de desenvolvimento e inclui `tests/`.
 Os dados dos bancos ficam em armazenamento temporario e desaparecem quando os
 containers sao removidos:
 
-Ele possui valores padrao de teste para `POSTGRES_PASSWORD` e `JWT_SECRET_KEY`,
-entao nao precisa dessas variaveis no `.env`.
+Ele possui valores padrao para `POSTGRES_PASSWORD`, `JWT_SECRET_KEY`,
+`SEED_ADMIN_PASSWORD` (`admin12345`) e `SEED_USER_PASSWORD` (`usuario12345`),
+entao nao precisa definir essas variaveis no arquivo .env. Em ambientes persistentes, defina
+senhas proprias para os usuarios do seed antes de executa-lo.
 
 ```powershell
 docker compose -f docker/docker-compose.test.yaml up --build --abort-on-container-exit --exit-code-from app
@@ -101,6 +131,11 @@ carrinho. O carrinho expira apos um dia sem atualizacoes. Ele armazena o
 identificador do prato, quantidade e observacao; precos e disponibilidade
 continuam sendo validados ao criar o pedido.
 
+Ao criar um pedido, informe um CEP brasileiro com 8 digitos, com ou sem hifen.
+O backend consulta o ViaCEP e rejeita CEPs nao encontrados antes de persistir
+o pedido. Se o ViaCEP estiver indisponivel, a criacao retorna erro temporario
+e pode ser tentada novamente.
+
 Cardapio: categorias e pratos ficam no PostgreSQL. As categorias iniciais
 `Pratos`, `Bebidas` e `Sobremesas` sao criadas pela migration. As rotas de
 consulta sao `GET /cardapio/categorias`, `GET /cardapio?categoria=Pratos`
@@ -113,3 +148,24 @@ vinculados nao pode ser removida. Imagens enviadas por
 remove-a. O upload recebe os bytes diretamente no corpo e o `Content-Type` deve
 informar o formato. A resposta do prato inclui `imagem: {url, content_type}`;
 os bytes e o tipo MIME ficam no PostgreSQL.
+
+Favoritos: usuário autenticado pode listar seus favoritos com `GET /favoritos`,
+adicionar com `PUT /favoritos/{prato_id}` e remover com
+`DELETE /favoritos/{prato_id}`. A relação usuário-prato é armazenada no
+PostgreSQL; adicionar o mesmo prato novamente não duplica o registro.
+
+Cupons: administradores criam, editam e removem cupons em `/cupons`; a listagem
+`GET /cupons` exibe os cupons ativos e dentro da validade, e `GET /cupons/admin`
+lista todos os cupons para administração. Usuário autenticado
+pode validar um código com `POST /cupons/validar`, enviando código e subtotal.
+Cupons suportam desconto percentual ou valor fixo, subtotal mínimo, período de
+validade e limite máximo para desconto percentual. No pedido, envie
+`cupom_codigo`; o backend calcula o desconto sobre os itens e impede que ele
+ultrapasse o subtotal. `limite_usos` define o total de resgates e `limite_por_usuario` limita o uso por cliente (1 por padrão). `somente_novos_clientes` restringe o cupom a quem ainda não tem pagamento aprovado. O uso é reservado ao criar o pedido e liberado se ele for cancelado.
+
+Fidelidade: `GET /fidelidade` consulta o saldo e
+`GET /fidelidade/transacoes` consulta o extrato. Cada R$ 1,00 em pagamento
+aprovado acumula 1 ponto; 100 pontos valem R$ 1,00 de desconto. Para resgatar,
+envie `pontos_resgatados` ao criar o pedido. O saldo é debitado atomicamente;
+os pontos resgatados são devolvidos se o pedido for cancelado. O extrato SQL
+torna os créditos de pedidos idempotentes.

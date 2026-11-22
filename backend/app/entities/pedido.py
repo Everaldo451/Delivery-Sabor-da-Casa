@@ -1,7 +1,8 @@
 from datetime import datetime
 from enum import Enum
+from re import fullmatch
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.types.geografia import CoordenadaGeografica
 
@@ -29,6 +30,16 @@ class EnderecoEntrega(BaseModel):
     complemento: str | None = None
     localizacao: CoordenadaGeografica | None = None
 
+    @field_validator("cep")
+    @classmethod
+    def normalizar_cep(cls, cep: str | None) -> str | None:
+        if cep is None:
+            return None
+        cep = cep.strip().replace("-", "")
+        if not fullmatch(r"\d{8}", cep):
+            raise ValueError("O CEP deve conter exatamente 8 digitos")
+        return cep
+
 
 class ItemPedido(BaseModel):
     prato_id: str
@@ -41,6 +52,8 @@ class ItemPedido(BaseModel):
 class Pedido(BaseModel):
     id: str | None = None
     user_id: str
+    cupom_codigo: str | None = None
+    pontos_resgatados: int = Field(default=0, ge=0)
     itens: list[ItemPedido] = Field(min_length=1)
     subtotal: float
     desconto: float

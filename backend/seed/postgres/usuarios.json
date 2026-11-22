@@ -1,0 +1,16 @@
+[
+  {
+    "id": "seed-admin",
+    "nome": "Administrador Delivery",
+    "email": "admin@delivery.local",
+    "is_admin": true,
+    "senha_env": "SEED_ADMIN_PASSWORD"
+  },
+  {
+    "id": "seed-cliente",
+    "nome": "Cliente de Exemplo",
+    "email": "cliente@delivery.local",
+    "is_admin": false,
+    "senha_env": "SEED_USER_PASSWORD"
+  }
+]

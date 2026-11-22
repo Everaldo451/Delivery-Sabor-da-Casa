@@ -7,7 +7,16 @@ from fastapi.testclient import TestClient
 
 from app.entities.usuario import Usuario
 from app.routers import include_routers
-from app.routers import auth, cardapio, carrinho, payments, pedidos
+from app.routers import (
+    auth,
+    cardapio,
+    carrinho,
+    cupons,
+    favoritos,
+    fidelidade,
+    payments,
+    pedidos,
+)
 
 
 @pytest.fixture
@@ -32,7 +41,7 @@ def app(usuario_teste: Usuario) -> FastAPI:
     async def usuario_admin() -> Usuario:
         return usuario_teste
 
-    for module in (cardapio, carrinho, payments, pedidos):
+    for module in (cardapio, carrinho, cupons, favoritos, fidelidade, payments, pedidos):
         application.dependency_overrides[module.auth_service.usuario_logado] = usuario_logado
         application.dependency_overrides[module.auth_service.usuario_admin] = usuario_admin
     application.dependency_overrides[auth.auth_service.obter_token] = lambda: "token-teste"
