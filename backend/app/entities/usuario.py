@@ -6,3 +6,4 @@ class Usuario(BaseModel):
     email: str
     senha_hash: str = Field(exclude=True, repr=False)
     is_admin: bool = False
+    nome: str = ""

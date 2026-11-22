@@ -1,9 +1,14 @@
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
 from app.database.postgresql import engine
 from app.database.postgresql.models.user import UserModel
 from app.entities.usuario import Usuario
+
+
+class EmailJaCadastradoError(Exception):
+    pass
 
 
 class UserRepository:
@@ -18,10 +23,40 @@ class UserRepository:
             user_model = session.get(UserModel, user_id)
             return self._para_entidade(user_model) if user_model is not None else None
 
+    def inserir(self, usuario: Usuario) -> Usuario:
+        user_model = UserModel(
+            id=usuario.id,
+            nome=usuario.nome,
+            email=usuario.email,
+            senha_hash=usuario.senha_hash,
+            is_admin=usuario.is_admin,
+        )
+        with Session(engine) as session:
+            existing_user = session.exec(
+                select(UserModel).where(UserModel.email == usuario.email)
+            ).first()
+            if existing_user is not None:
+                raise EmailJaCadastradoError(usuario.email)
+
+            session.add(user_model)
+            try:
+                session.commit()
+            except IntegrityError as exc:
+                session.rollback()
+                existing_user = session.exec(
+                    select(UserModel).where(UserModel.email == usuario.email)
+                ).first()
+                if existing_user is not None:
+                    raise EmailJaCadastradoError(usuario.email) from exc
+                raise
+            session.refresh(user_model)
+            return self._para_entidade(user_model)
+
     @staticmethod
     def _para_entidade(user_model: UserModel) -> Usuario:
         return Usuario(
             id=user_model.id,
+            nome=user_model.nome,
             email=user_model.email,
             senha_hash=user_model.senha_hash,
             is_admin=user_model.is_admin,

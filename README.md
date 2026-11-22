@@ -9,17 +9,39 @@ com uma chave aleatoria de pelo menos 32 bytes. Gere uma com:
 python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
-O login usa usuários previamente provisionados na tabela `users`; não há
-endpoint público de cadastro. O campo `senha_hash` deve conter um hash bcrypt.
-O Redis local deve estar ativo; ele armazena os tokens revogados até a expiração.
+O cadastro público está disponível em `POST /users`, com `nome`, `email` e
+`senha`. As senhas são armazenadas com hash bcrypt. O Redis local deve estar
+ativo; ele armazena os tokens revogados até a expiração.
 
 Instale as dependências com uv:
 
 ```powershell
 cd backend
 python -m uv sync --group dev
+python -m uv run alembic upgrade head
 python -m uv run uvicorn app.main:app --reload
 ```
+
+As alterações do schema PostgreSQL são versionadas com Alembic. Para um banco
+existente criado pelo app antes da adoção do Alembic, marque a revisão-base e
+aplique as migrations pendentes:
+
+```powershell
+python -m uv run alembic stamp 20261121_01
+python -m uv run alembic upgrade head
+```
+
+Essa adoção pressupõe que as tabelas `users` e `payments` já existam. A migration
+interrompe a atualização se encontrar pagamentos sem usuário correspondente,
+para que esses dados sejam corrigidos antes de criar a foreign key.
+
+Para gerar uma migration a partir de alterações nos modelos:
+
+```powershell
+python -m uv run alembic revision --autogenerate -m "descricao da alteracao"
+```
+
+Revise sempre o arquivo gerado antes de aplicar `alembic upgrade head`.
 
 Autenticacao: `POST /auth/login` recebe `email` e `senha`; envie o JWT retornado
 no header `Authorization: Bearer <token>`. `POST /auth/logout` revoga esse token.
