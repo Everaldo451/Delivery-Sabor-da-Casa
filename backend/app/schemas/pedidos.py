@@ -61,6 +61,14 @@ class PedidoOut(BaseModel):
     atualizado_em: datetime
 
 
+class PedidosPaginaOut(BaseModel):
+    pedidos: list[PedidoOut]
+    pagina: int
+    limite: int
+    total: int
+    total_paginas: int
+
+
 class ItemRepetir(BaseModel):
     """Item de um pedido antigo, com o preco ATUAL do cardapio, pronto pro carrinho."""
 

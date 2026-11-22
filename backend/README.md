@@ -131,6 +131,15 @@ carrinho. O carrinho expira apos um dia sem atualizacoes. Ele armazena o
 identificador do prato, quantidade e observacao; precos e disponibilidade
 continuam sendo validados ao criar o pedido.
 
+Clientes consultam seus próprios pedidos em `GET /pedidos?pagina=1&limite=20`.
+Administradores podem listar todos em `GET /pedidos/admin?pagina=1&limite=20`;
+a resposta inclui pedidos, pagina, limite, total e total_paginas. A conexao em
+tempo real fica em `WS /pedidos/realtime-orders?token=<access_token>` e aceita somente
+administradores. Ela publica `pedido_criado` quando um pedido e criado e
+`pedido_status_atualizado` quando seu status muda, incluindo a confirmacao de
+pagamento. O payload contem o pedido completo, por isso o canal e restrito a
+administradores.
+
 Ao criar um pedido, informe um CEP brasileiro com 8 digitos, com ou sem hifen.
 O backend consulta o ViaCEP e rejeita CEPs nao encontrados antes de persistir
 o pedido. Se o ViaCEP estiver indisponivel, a criacao retorna erro temporario

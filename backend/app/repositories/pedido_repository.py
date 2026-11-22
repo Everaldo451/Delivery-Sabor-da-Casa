@@ -46,6 +46,7 @@ class PedidosRepository:
 
     async def criar_indice_historico(self) -> None:
         await self._collection.create_index([("user_id", 1), ("criado_em", -1)])
+        await self._collection.create_index([("criado_em", -1)])
 
     async def inserir(self, pedido: Pedido) -> Pedido:
         doc = self._para_documento(pedido)
@@ -70,6 +71,18 @@ class PedidosRepository:
             .limit(limite)
         )
         return [self._para_entidade(doc) async for doc in cursor]
+
+    async def listar_todos(self, pagina: int, limite: int) -> tuple[list[Pedido], int]:
+        filtro = {}
+        total = await self._collection.count_documents(filtro)
+        cursor = (
+            self._collection.find(filtro)
+            .sort("criado_em", -1)
+            .skip((pagina - 1) * limite)
+            .limit(limite)
+        )
+        pedidos = [self._para_entidade(doc) async for doc in cursor]
+        return pedidos, total
 
     async def buscar_por_id(self, pedido_id: str) -> Pedido | None:
         oid = _oid(pedido_id)

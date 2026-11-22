@@ -62,6 +62,7 @@ def criar_service():
 
 async def test_criar_pedido_aplica_cupom_e_resgata_pontos():
     service, repository, coupons, loyalty = criar_service()
+    service._eventos_service.pedido_criado = AsyncMock()
 
     pedido = await service.criar_pedido(
         dados_pedido(),
@@ -81,6 +82,21 @@ async def test_criar_pedido_aplica_cupom_e_resgata_pontos():
     loyalty.calcular_desconto.assert_called_once_with("u-1", 200, Decimal("35.00"))
     loyalty.resgatar.assert_called_once_with("u-1", "pedido-mongo-1", 200)
     repository.remover.assert_not_awaited()
+    service._eventos_service.pedido_criado.assert_awaited_once_with(pedido)
+
+
+async def test_listar_admin_retorna_metadados_de_paginacao():
+    service, repository, _, _ = criar_service()
+    repository.listar_todos = AsyncMock(return_value=([], 45))
+
+    pagina = await service.listar_admin(pagina=3, limite=20)
+
+    assert pagina.pedidos == []
+    assert pagina.pagina == 3
+    assert pagina.limite == 20
+    assert pagina.total == 45
+    assert pagina.total_paginas == 3
+    repository.listar_todos.assert_awaited_once_with(3, 20)
 
 
 async def test_criar_pedido_remove_documento_se_resgate_atomico_falhar():

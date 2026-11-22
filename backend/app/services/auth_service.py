@@ -95,6 +95,10 @@ class AuthService:
         usuario, _ = await self._validar_token(token)
         return usuario
 
+    async def usuario_por_token(self, token: str) -> Usuario:
+        usuario, _ = await self._validar_token(token, tipo_esperado="access")
+        return usuario
+
     async def usuario_admin(
         self,
         credenciais: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),

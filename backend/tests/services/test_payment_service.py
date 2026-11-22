@@ -270,11 +270,14 @@ async def test_pedido_recebido_pode_ser_cancelado_antes_do_preparo():
     )
     pedidos_repository.buscar_por_id.return_value.cupom_codigo = "CANCELA10"
     cupom_service = Mock()
+    eventos_service = Mock()
+    eventos_service.status_atualizado = AsyncMock()
     service = PedidoService(
         pedidos_repository,
         Mock(),
         Mock(),
         cupom_service=cupom_service,
+        eventos_service=eventos_service,
     )
 
     resultado = await service.atualizar_status(
@@ -285,6 +288,7 @@ async def test_pedido_recebido_pode_ser_cancelado_antes_do_preparo():
     assert resultado.status == StatusPedido.cancelado
     pedidos_repository.atualizar_status.assert_awaited_once()
     cupom_service.estornar_uso.assert_called_once_with("pedido-1")
+    eventos_service.status_atualizado.assert_awaited_once()
 
 
 async def test_pedido_em_preparo_nao_pode_ser_cancelado():

@@ -13,6 +13,7 @@ from app.schemas.pedidos import (
     ItemRepetir,
     PedidoCreate,
     PedidoOut,
+    PedidosPaginaOut,
 )
 from app.repositories.zona_entrega_repository import ZonaEntregaRepository
 from app.services.cardapio_service import CardapioService
@@ -23,6 +24,7 @@ from app.services.cep_service import (
 )
 from app.services.cupom_service import CupomService
 from app.services.fidelidade_service import FidelidadeService
+from app.services.pedido_eventos_service import PedidoEventosService
 
 
 class PedidoService:
@@ -36,6 +38,7 @@ class PedidoService:
         cupom_service: CupomService | None = None,
         fidelidade_service: FidelidadeService | None = None,
         cep_service: ViaCepService | None = None,
+        eventos_service: PedidoEventosService | None = None,
     ) -> None:
         self._pedidos_repository = pedidos_repository
         self._zona_entrega_repository = zona_entrega_repository
@@ -49,6 +52,7 @@ class PedidoService:
         self._cupom_service = cupom_service or CupomService()
         self._fidelidade_service = fidelidade_service or FidelidadeService()
         self._cep_service = cep_service or ViaCepService()
+        self._eventos_service = eventos_service or PedidoEventosService()
 
     def _para_saida(self, pedido: Pedido) -> PedidoOut:
         if pedido.id is None:
@@ -166,7 +170,21 @@ class PedidoService:
             if persistido.id is not None:
                 await self._pedidos_repository.remover(persistido.id)
             raise
-        return self._para_saida(persistido)
+        pedido_saida = self._para_saida(persistido)
+        await self._eventos_service.pedido_criado(pedido_saida)
+        return pedido_saida
+
+    async def listar_admin(self, pagina: int, limite: int) -> PedidosPaginaOut:
+        pedidos, total = await self._pedidos_repository.listar_todos(pagina, limite)
+        saidas = [self._para_saida(pedido) for pedido in pedidos]
+        total_paginas = (total + limite - 1) // limite
+        return PedidosPaginaOut(
+            pedidos=saidas,
+            pagina=pagina,
+            limite=limite,
+            total=total,
+            total_paginas=total_paginas,
+        )
 
     async def historico(
         self, pagina: int, limite: int, usuario: Usuario
@@ -218,7 +236,9 @@ class PedidoService:
             )
         if dados.status == StatusPedido.cancelado and pedido.cupom_codigo:
             self._cupom_service.estornar_uso(pedido_id)
-        return self._para_saida(atualizado)
+        pedido_saida = self._para_saida(atualizado)
+        await self._eventos_service.status_atualizado(pedido_saida)
+        return pedido_saida
 
     async def confirmar_pagamento(self, pedido_id: str) -> PedidoOut:
         pedido = await self._buscar_por_id(pedido_id)
@@ -229,7 +249,9 @@ class PedidoService:
         ):
             return self._para_saida(pedido)
         atualizado = await self._salvar_status(pedido_id, StatusPedido.recebido)
-        return self._para_saida(atualizado)
+        pedido_saida = self._para_saida(atualizado)
+        await self._eventos_service.status_atualizado(pedido_saida)
+        return pedido_saida
 
     async def _buscar_por_id(self, pedido_id: str) -> Pedido:
         pedido = await self._pedidos_repository.buscar_por_id(pedido_id)
