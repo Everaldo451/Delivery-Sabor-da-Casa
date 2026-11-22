@@ -3,6 +3,8 @@ from redis.asyncio import Redis
 from app.database.redis import redis_client
 from app.entities.carrinho import Carrinho
 
+CARRINHO_TTL_SEGUNDOS = 24 * 60 * 60
+
 
 class CarrinhoRepository:
     def __init__(self, client: Redis | None = None) -> None:
@@ -18,6 +20,7 @@ class CarrinhoRepository:
         await self._client.set(
             self._key(carrinho.user_id),
             carrinho.model_dump_json(),
+            ex=CARRINHO_TTL_SEGUNDOS,
         )
 
     async def remover(self, user_id: str) -> None:
