@@ -5,7 +5,7 @@ services:
     image: postgres:latest
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no backend/.env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-test-only-postgres-password}
       POSTGRES_DB: ${POSTGRES_DB:-sabordacasa}
     tmpfs:
       - /var/lib/postgresql/data
@@ -38,16 +38,18 @@ services:
       retries: 10
 
   app:
+    container_name: app
     build:
       context: ..
       dockerfile: docker/Dockerfile.test
     environment:
       PYTHONPATH: /app
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Defina JWT_SECRET_KEY no backend/.env}
-      POSTGRES_URL: postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no backend/.env}@postgres:5432/${POSTGRES_DB:-sabordacasa}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-delivery-test-jwt-secret-key-at-least-32-bytes}
+      POSTGRES_URL: postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-test-only-postgres-password}@postgres:5432/${POSTGRES_DB:-sabordacasa}
       MONGO_URL: mongodb://mongodb:27017
       MONGO_DB: ${MONGO_DB:-sabordacasa}
       REDIS_URL: redis://redis:6379/0
+      RUN_REPOSITORY_MIGRATIONS: "1"
     depends_on:
       postgres:
         condition: service_healthy

@@ -1,6 +1,22 @@
 venv/
 .venv/
 __pycache__/
+*.py[cod]
 .env
 .env.*
 !.env.example
+
+# Pytest e coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Cache local do uv (quando UV_CACHE_DIR estiver dentro do projeto)
+.uv-cache/
+
+# Caches opcionais das ferramentas de desenvolvimento
+.mypy_cache/
+.ruff_cache/
+.hypothesis/

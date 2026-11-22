@@ -1,4 +1,3 @@
-import asyncio
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, Mock
 
@@ -89,7 +88,7 @@ def test_login_rejeita_senha_acima_do_limite_bcrypt():
         LoginRequest(email="cliente@example.com", senha="a" * 73)
 
 
-def test_logout_revoga_token_e_usuario_logado_rejeita_reuso(monkeypatch):
+async def test_logout_revoga_token_e_usuario_logado_rejeita_reuso(monkeypatch):
     monkeypatch.setenv("JWT_SECRET_KEY", JWT_SECRET)
     user_repository = Mock()
     user_repository.buscar_por_id.return_value = Usuario(
@@ -110,12 +109,12 @@ def test_logout_revoga_token_e_usuario_logado_rejeita_reuso(monkeypatch):
         credentials=token,
     )
 
-    asyncio.run(service.logout(token))
+    await service.logout(token)
 
     revoked_token_repository.inserir.assert_awaited_once()
     assert revoked_token_repository.inserir.call_args.args[0] == "token-1"
     assert revoked_token_repository.inserir.call_args.args[1].tzinfo == timezone.utc
     revoked_token_repository.contem.return_value = True
     with pytest.raises(HTTPException) as exc_info:
-        asyncio.run(service.usuario_logado(credenciais))
+        await service.usuario_logado(credenciais)
     assert exc_info.value.status_code == 401

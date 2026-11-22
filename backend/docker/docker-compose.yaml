@@ -43,6 +43,7 @@ services:
     restart: unless-stopped
 
   app:
+    container_name: app
     build:
       context: ..
       dockerfile: docker/Dockerfile

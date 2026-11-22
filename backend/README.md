@@ -62,10 +62,21 @@ O Compose de teste instala as dependencias de desenvolvimento e inclui `tests/`.
 Os dados dos bancos ficam em armazenamento temporario e desaparecem quando os
 containers sao removidos:
 
+Ele possui valores padrao de teste para `POSTGRES_PASSWORD` e `JWT_SECRET_KEY`,
+entao nao precisa dessas variaveis no `.env`.
+
 ```powershell
 docker compose --env-file .env -f docker/docker-compose.test.yaml up --build --abort-on-container-exit --exit-code-from app
 docker compose --env-file .env -f docker/docker-compose.test.yaml down
 ```
+
+Os testes estao separados por responsabilidade em `tests/routers`,
+`tests/repositories` e `tests/services`. Os testes HTTP usam um `TestClient` com
+servicos substituidos por mocks; o `conftest.py` de repositories aplica as
+migrations do Alembic quando `RUN_REPOSITORY_MIGRATIONS=1`, definido no Compose
+de teste.
+Os testes de repositories usam clientes/sessoes controlados para verificar as
+conversoes e chamadas aos bancos sem depender de dados persistentes.
 
 Os dois Compose devem ser executados a partir de `backend`. O container da API
 usa os nomes dos servicos como hosts dos bancos; a porta `8000` e publicada no

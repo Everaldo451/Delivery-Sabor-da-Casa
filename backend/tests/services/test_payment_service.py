@@ -1,4 +1,3 @@
-import asyncio
 from datetime import datetime, timezone
 from decimal import Decimal
 from unittest.mock import AsyncMock, Mock
@@ -15,7 +14,8 @@ from app.entities.pedido import (
     StatusPedido,
 )
 from app.entities.usuario import Usuario
-from app.schemas.payments import AtualizarStatus, CheckoutCreate
+from app.schemas.payments import CheckoutCreate
+from app.schemas.pedidos import AtualizarStatus
 from app.services.pedidos_service import PedidoService
 from app.services.payment_service import PaymentService
 
@@ -104,7 +104,7 @@ def pedido_teste(
         ),
     ],
 )
-def test_checkout_usa_strategy_de_pagamento(
+async def test_checkout_usa_strategy_de_pagamento(
     method,
     resultado,
     status,
@@ -147,15 +147,13 @@ def test_checkout_usa_strategy_de_pagamento(
         pedido_service,
     )
 
-    saida = asyncio.run(
-        service.checkout(
-            CheckoutCreate(
-                pedido_id="pedido-1",
-                method=method,
-                simulation_result=resultado,
-            ),
-            Usuario(id="1", email="cliente@example.com", senha_hash=""),
-        )
+    saida = await service.checkout(
+        CheckoutCreate(
+            pedido_id="pedido-1",
+            method=method,
+            simulation_result=resultado,
+        ),
+        Usuario(id="1", email="cliente@example.com", senha_hash=""),
     )
 
     assert saida.status == status
@@ -173,7 +171,7 @@ def test_checkout_usa_strategy_de_pagamento(
         )
 
 
-def test_pedido_aguardando_pagamento_nao_avanca_para_preparo():
+async def test_pedido_aguardando_pagamento_nao_avanca_para_preparo():
     pedidos_repository = Mock()
     pedidos_repository.buscar_por_id = AsyncMock(
         return_value=pedido_teste(
@@ -189,18 +187,16 @@ def test_pedido_aguardando_pagamento_nao_avanca_para_preparo():
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        asyncio.run(
-            service.atualizar_status(
-                "pedido-1",
-                AtualizarStatus(status=StatusPedido.em_preparo),
-            )
+        await service.atualizar_status(
+            "pedido-1",
+            AtualizarStatus(status=StatusPedido.em_preparo),
         )
 
     assert exc_info.value.status_code == 409
     pedidos_repository.atualizar_status.assert_not_awaited()
 
 
-def test_pedido_aguardando_pagamento_nao_e_confirmado_manualmente():
+async def test_pedido_aguardando_pagamento_nao_e_confirmado_manualmente():
     pedidos_repository = Mock()
     pedidos_repository.buscar_por_id = AsyncMock(
         return_value=pedido_teste(
@@ -216,18 +212,16 @@ def test_pedido_aguardando_pagamento_nao_e_confirmado_manualmente():
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        asyncio.run(
-            service.atualizar_status(
-                "pedido-1",
-                AtualizarStatus(status=StatusPedido.recebido),
-            )
+        await service.atualizar_status(
+            "pedido-1",
+            AtualizarStatus(status=StatusPedido.recebido),
         )
 
     assert exc_info.value.status_code == 409
     pedidos_repository.atualizar_status.assert_not_awaited()
 
 
-def test_pedido_recebido_pode_ser_cancelado_antes_do_preparo():
+async def test_pedido_recebido_pode_ser_cancelado_antes_do_preparo():
     pedidos_repository = Mock()
     pedidos_repository.buscar_por_id = AsyncMock(
         return_value=pedido_teste(
@@ -247,18 +241,16 @@ def test_pedido_recebido_pode_ser_cancelado_antes_do_preparo():
         Mock(),
     )
 
-    resultado = asyncio.run(
-        service.atualizar_status(
-            "pedido-1",
-            AtualizarStatus(status=StatusPedido.cancelado),
-        )
+    resultado = await service.atualizar_status(
+        "pedido-1",
+        AtualizarStatus(status=StatusPedido.cancelado),
     )
 
     assert resultado.status == StatusPedido.cancelado
     pedidos_repository.atualizar_status.assert_awaited_once()
 
 
-def test_pedido_em_preparo_nao_pode_ser_cancelado():
+async def test_pedido_em_preparo_nao_pode_ser_cancelado():
     pedidos_repository = Mock()
     pedidos_repository.buscar_por_id = AsyncMock(
         return_value=pedido_teste(
@@ -274,11 +266,9 @@ def test_pedido_em_preparo_nao_pode_ser_cancelado():
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        asyncio.run(
-            service.atualizar_status(
-                "pedido-1",
-                AtualizarStatus(status=StatusPedido.cancelado),
-            )
+        await service.atualizar_status(
+            "pedido-1",
+            AtualizarStatus(status=StatusPedido.cancelado),
         )
 
     assert exc_info.value.status_code == 409
