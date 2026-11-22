@@ -15,6 +15,16 @@ async def test_buscar_desserializa_carrinho_e_usa_chave_por_usuario():
     client.get.assert_awaited_once_with("carrinho:u-1")
 
 
+async def test_buscar_retorna_none_quando_nao_existe_chave():
+    client = AsyncMock()
+    client.get.return_value = None
+
+    resultado = await CarrinhoRepository(client).buscar("u-sem-carrinho")
+
+    assert resultado is None
+    client.get.assert_awaited_once_with("carrinho:u-sem-carrinho")
+
+
 async def test_salvar_aplica_ttl_de_24_horas():
     client = AsyncMock()
     repository = CarrinhoRepository(client)

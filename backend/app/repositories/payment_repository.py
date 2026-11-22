@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlmodel import select
 
 from app.database.postgresql import create_session
 from app.database.postgresql.models.payment import PaymentModel

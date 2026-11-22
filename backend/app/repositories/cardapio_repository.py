@@ -1,9 +1,9 @@
 from uuid import uuid4
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import load_only
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.database.postgresql import create_session
 from app.database.postgresql.models.cardapio import CategoriaModel, PratoModel

@@ -1,5 +1,5 @@
-from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
+from sqlmodel import select
 
 from app.database.postgresql import create_session
 from app.database.postgresql.models.user import UserModel

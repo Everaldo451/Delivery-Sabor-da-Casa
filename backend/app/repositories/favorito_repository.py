@@ -1,5 +1,5 @@
-from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
+from sqlmodel import select
 
 from app.database.postgresql import create_session
 from app.database.postgresql.models.cardapio import PratoModel
@@ -34,8 +34,7 @@ class FavoritoRepository:
                     favorito = session.get(FavoritoModel, (user_id, prato_id))
                     if favorito is None:
                         raise
-                if favorito is not None:
-                    session.refresh(favorito)
+                session.refresh(favorito)
             return self._para_entidade(favorito)
 
     def remover(self, user_id: str, prato_id: str) -> bool:

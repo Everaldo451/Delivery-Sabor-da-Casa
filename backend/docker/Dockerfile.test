@@ -12,4 +12,4 @@ RUN uv sync --locked --group dev --no-install-project
 
 COPY . .
 
-CMD ["pytest", "--cov=app", "--cov-report=term-missing", "-q"]
+CMD ["pytest", "--cov=app.repositories", "--cov-branch", "--cov-report=term-missing", "--cov-fail-under=100", "-q"]

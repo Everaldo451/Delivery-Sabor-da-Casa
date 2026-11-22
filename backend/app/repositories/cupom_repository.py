@@ -1,8 +1,9 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
+from sqlmodel import select
 
 from app.database.postgresql import create_session
 from app.database.postgresql.models.cupom import CupomModel

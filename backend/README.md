@@ -81,10 +81,28 @@ As imagens de producao e de teste usam `latest` para PostgreSQL e Redis; o Mongo
 usa `latest` em producao e `mongo:4.4.29` nos testes. A API e construida pelo
 Compose diretamente do Dockerfile apropriado para cada ambiente.
 
+Os serviços não definem `container_name` fixo. Assim, o Compose gera nomes com
+base no projeto e no serviço, permitindo manter os ambientes de produção e de
+teste simultaneamente sem conflito. Nos comandos `docker compose exec`, use o
+nome do serviço (`app`); para o container temporário usado no passo a passo de
+teste, o nome `backend-teste` é definido explicitamente no comando `run`.
+
 ```powershell
 docker compose --env-file .env -f docker/docker-compose.yaml up -d --build
-docker compose --env-file .env -f docker/docker-compose.yaml exec app /app/.venv/bin/alembic upgrade head
+docker compose --env-file .env -f docker/docker-compose.yaml exec app sh
 ```
+
+O segundo comando abre um shell no container `app`, enquanto o servidor Uvicorn
+continua rodando. Dentro desse shell, aplique as migrations e execute os seeds:
+
+```sh
+alembic upgrade head
+python -m seed.postgres.seed
+python -m seed.mongodb.seed
+```
+
+Configure `SEED_ADMIN_PASSWORD` e `SEED_USER_PASSWORD` no `.env` antes dos seeds
+para substituir as senhas padrão do Compose.
 
 O Compose de teste instala as dependencias de desenvolvimento e inclui `tests/`.
 Os dados dos bancos ficam em armazenamento temporario e desaparecem quando os
@@ -97,6 +115,56 @@ senhas proprias para os usuarios do seed antes de executa-lo.
 
 ```powershell
 docker compose -f docker/docker-compose.test.yaml up --build --abort-on-container-exit --exit-code-from app
+docker compose -f docker/docker-compose.test.yaml down
+```
+
+#### Rodar a aplicação usando os containers de teste
+
+Para iniciar a API em vez de executar `pytest`, rode os comandos a seguir na
+pasta `backend`. Esse fluxo usa o MongoDB 4.4.29 e bancos temporários do Compose
+de teste; os dados são apagados quando os containers são removidos.
+
+Suba os bancos, o Redis e um container da aplicação mantido em espera. O comando
+`sleep infinity` substitui o `pytest` e deixa o container disponível para você
+entrar e executar os próximos passos:
+
+```powershell
+docker compose -f docker/docker-compose.test.yaml run -d --name backend-teste -p 8000:8000 app sleep infinity
+```
+
+Entre no container:
+
+```powershell
+docker exec -it backend-teste sh
+```
+
+Dentro do shell, aplique as migrations e carregue os dados iniciais:
+
+```sh
+alembic upgrade head
+python -m seed.postgres.seed
+python -m seed.mongodb.seed
+```
+
+Depois, ainda dentro do container, inicie a API:
+
+```sh
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+A API ficará disponível em `http://localhost:8000`. Deixe esse comando ativo
+enquanto estiver usando a aplicação.
+
+O usuário administrador criado pelo seed local é `admin@delivery.local`, com a
+senha definida por `SEED_ADMIN_PASSWORD` (padrão do Compose de teste:
+`admin12345`). Os logs do Uvicorn aparecem no terminal onde ele foi iniciado.
+Use `Ctrl+C` nesse terminal para parar a API; o container continua ativo até ser
+removido.
+
+Para encerrar a API e os bancos temporários:
+
+```powershell
+docker rm -f backend-teste
 docker compose -f docker/docker-compose.test.yaml down
 ```
 
