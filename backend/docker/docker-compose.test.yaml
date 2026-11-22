@@ -45,6 +45,8 @@ services:
     environment:
       PYTHONPATH: /app
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-delivery-test-jwt-secret-key-at-least-32-bytes}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-admin12345}
+      SEED_USER_PASSWORD: ${SEED_USER_PASSWORD:-usuario12345}
       POSTGRES_URL: postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-test-only-postgres-password}@postgres:5432/${POSTGRES_DB:-sabordacasa}
       MONGO_URL: mongodb://mongodb:27017
       MONGO_DB: ${MONGO_DB:-sabordacasa}

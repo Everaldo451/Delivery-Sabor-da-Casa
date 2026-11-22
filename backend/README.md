@@ -22,6 +22,34 @@ python -m uv run alembic upgrade head
 python -m uv run uvicorn app.main:app --reload
 ```
 
+### Seed local do PostgreSQL
+
+Com o PostgreSQL ativo e as migrations aplicadas, configure
+`SEED_ADMIN_PASSWORD` e `SEED_USER_PASSWORD` no `backend/.env` e execute:
+
+```powershell
+python -m uv run python -m seed.postgres.seed
+```
+
+O seed cria/atualiza um administrador (`admin@delivery.local`), um cliente
+(`cliente@delivery.local`), quatro categorias e 40 pratos de demonstração. Os
+Compose definem `admin12345` e `usuario12345` como senhas padrão do seed; no
+Compose de produção, configure senhas próprias no `.env` antes de executá-lo.
+Os registros estão em `seed/postgres/*.json`; as senhas nunca ficam nos arquivos
+de dados e são gravadas no PostgreSQL com hash bcrypt. A execução é idempotente.
+Uma imagem padrão opcional pode ser colocada em
+`seed/postgres/assets/prato-padrao.png`; sem esse arquivo, os pratos são criados
+sem imagem.
+
+### Seed local do MongoDB
+
+Com o MongoDB ativo, execute da pasta `backend` para importar ou atualizar as
+sete zonas de entrega do arquivo `seed/mongodb/zonas_jp.json`:
+
+```powershell
+python -m uv run python -m seed.mongodb.seed
+```
+
 As alterações do schema PostgreSQL são versionadas com Alembic. Para um banco
 existente criado pelo app antes da adoção do Alembic, marque a revisão-base e
 aplique as migrations pendentes:
@@ -62,8 +90,10 @@ O Compose de teste instala as dependencias de desenvolvimento e inclui `tests/`.
 Os dados dos bancos ficam em armazenamento temporario e desaparecem quando os
 containers sao removidos:
 
-Ele possui valores padrao de teste para `POSTGRES_PASSWORD` e `JWT_SECRET_KEY`,
-entao nao precisa dessas variaveis no `.env`.
+Ele possui valores padrao para `POSTGRES_PASSWORD`, `JWT_SECRET_KEY`,
+`SEED_ADMIN_PASSWORD` (`admin12345`) e `SEED_USER_PASSWORD` (`usuario12345`),
+entao nao precisa definir essas variaveis no arquivo .env. Em ambientes persistentes, defina
+senhas proprias para os usuarios do seed antes de executa-lo.
 
 ```powershell
 docker compose -f docker/docker-compose.test.yaml up --build --abort-on-container-exit --exit-code-from app
