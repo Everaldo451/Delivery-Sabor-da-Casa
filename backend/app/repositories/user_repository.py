@@ -1,8 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import Session
 
-from app.database.postgresql import engine
+from app.database.postgresql import create_session
 from app.database.postgresql.models.user import UserModel
 from app.entities.usuario import Usuario
 
@@ -13,13 +12,13 @@ class EmailJaCadastradoError(Exception):
 
 class UserRepository:
     def buscar_por_email(self, email: str) -> Usuario | None:
-        with Session(engine) as session:
+        with create_session() as session:
             statement = select(UserModel).where(UserModel.email == email)
             user_model = session.exec(statement).first()
             return self._para_entidade(user_model) if user_model is not None else None
 
     def buscar_por_id(self, user_id: str) -> Usuario | None:
-        with Session(engine) as session:
+        with create_session() as session:
             user_model = session.get(UserModel, user_id)
             return self._para_entidade(user_model) if user_model is not None else None
 
@@ -31,7 +30,7 @@ class UserRepository:
             senha_hash=usuario.senha_hash,
             is_admin=usuario.is_admin,
         )
-        with Session(engine) as session:
+        with create_session() as session:
             existing_user = session.exec(
                 select(UserModel).where(UserModel.email == usuario.email)
             ).first()

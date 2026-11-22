@@ -1,7 +1,6 @@
 from sqlalchemy import select
-from sqlmodel import Session
 
-from app.database.postgresql import engine
+from app.database.postgresql import create_session
 from app.database.postgresql.models.payment import PaymentModel
 from app.entities.payment import Payment
 
@@ -25,14 +24,14 @@ class PaymentRepository:
 
     def inserir(self, payment: Payment) -> Payment:
         payment_model = self._para_modelo(payment)
-        with Session(engine) as session:
+        with create_session() as session:
             session.add(payment_model)
             session.commit()
             session.refresh(payment_model)
             return self._para_entidade(payment_model)
 
     def buscar_por_id(self, payment_id: int) -> Payment | None:
-        with Session(engine) as session:
+        with create_session() as session:
             payment_model = session.get(PaymentModel, payment_id)
             return (
                 self._para_entidade(payment_model)
@@ -41,7 +40,7 @@ class PaymentRepository:
             )
 
     def listar_por_usuario(self, user_id: str) -> list[Payment]:
-        with Session(engine) as session:
+        with create_session() as session:
             statement = (
                 select(PaymentModel)
                 .where(PaymentModel.user_id == user_id)

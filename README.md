@@ -54,3 +54,16 @@ Carrinho: as rotas autenticadas em `/carrinho` guardam os itens no Redis, na cha
 carrinho. O carrinho expira apos um dia sem atualizacoes. Ele armazena o
 identificador do prato, quantidade e observacao; precos e disponibilidade
 continuam sendo validados ao criar o pedido.
+
+Cardapio: categorias e pratos ficam no PostgreSQL. As categorias iniciais
+`Pratos`, `Bebidas` e `Sobremesas` sao criadas pela migration. As rotas de
+consulta sao `GET /cardapio/categorias`, `GET /cardapio?categoria=Pratos`
+(filtro opcional) e `GET /cardapio/{prato_id}`. Criacao, edicao e remocao de
+pratos e categorias exigem usuario administrador: `POST /cardapio/categorias`,
+`PUT` e `DELETE /cardapio/categorias/{categoria_id}`. Uma categoria com pratos
+vinculados nao pode ser removida. Imagens enviadas por
+`PUT /cardapio/{prato_id}/imagem` sao armazenadas em binario no PostgreSQL
+(JPEG, PNG ou WebP, ate 5 MiB); `GET` no mesmo caminho serve a imagem e `DELETE`
+remove-a. O upload recebe os bytes diretamente no corpo e o `Content-Type` deve
+informar o formato. A resposta do prato inclui `imagem: {url, content_type}`;
+os bytes e o tipo MIME ficam no PostgreSQL.
