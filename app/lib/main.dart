@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'theme/app_theme.dart';
+import 'screens/login_screen.dart';
 
 void main() => runApp(const SaborDaCasaApp());
 
@@ -13,7 +14,10 @@ class SaborDaCasaApp extends StatelessWidget {
       title: 'Sabor da Casa',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      home: const CasaShell(),
+      home: const LoginScreen(),
+      routes: {
+        '/home': (_) => const CasaShell(),
+      },
     );
   }
 }
