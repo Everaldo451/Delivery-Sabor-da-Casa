@@ -45,3 +45,11 @@ Revise sempre o arquivo gerado antes de aplicar `alembic upgrade head`.
 
 Autenticacao: `POST /auth/login` recebe `email` e `senha`; envie o JWT retornado
 no header `Authorization: Bearer <token>`. `POST /auth/logout` revoga esse token.
+
+Carrinho: as rotas autenticadas em `/carrinho` guardam os itens no Redis, na chave
+`carrinho:<user_id>`. `GET /carrinho` consulta (e retorna vazio se ainda nao existir),
+`PUT /carrinho` substitui os itens, `POST /carrinho/itens` adiciona quantidades,
+`PATCH /carrinho/itens/{prato_id}` altera quantidade e observacao,
+`DELETE /carrinho/itens/{prato_id}` remove um item e `DELETE /carrinho` limpa o
+carrinho. O carrinho armazena identificador do prato, quantidade e observacao;
+precos e disponibilidade continuam sendo validados ao criar o pedido.

@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 
 from app.entities.payment import PaymentStatus
+from app.entities.pedido import StatusPedido
 
 
 class PaymentStrategy(ABC):
