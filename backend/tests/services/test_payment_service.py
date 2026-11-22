@@ -171,6 +171,39 @@ async def test_checkout_usa_strategy_de_pagamento(
         )
 
 
+async def test_pagamento_aprovado_acumula_pontos_apenas_uma_chamada():
+    pedido = pedido_teste(FormaPagamento.pix, StatusPedido.aguardando_pagamento)
+    pedidos_repository = Mock()
+    pedidos_repository.buscar_do_usuario = AsyncMock(return_value=pedido)
+    pedido_service = Mock()
+    pedido_service.confirmar_pagamento = AsyncMock()
+    payment_repository = Mock()
+    payment_repository.inserir.return_value = Payment(
+        id=1,
+        pedido_id="pedido-1",
+        user_id="1",
+        amount=Decimal("35.00"),
+        method=FormaPagamento.pix,
+        status=PaymentStatus.aprovado,
+    )
+    fidelidade = Mock()
+    service = PaymentService(
+        payment_repository,
+        pedidos_repository,
+        pedido_service,
+        fidelidade_service=fidelidade,
+    )
+
+    await service.checkout(
+        CheckoutCreate(pedido_id="pedido-1", method=FormaPagamento.pix),
+        Usuario(id="1", email="cliente@example.com", senha_hash=""),
+    )
+
+    fidelidade.creditar_por_pedido.assert_called_once_with(
+        "1", "pedido-1", Decimal("35.0")
+    )
+
+
 async def test_pedido_aguardando_pagamento_nao_avanca_para_preparo():
     pedidos_repository = Mock()
     pedidos_repository.buscar_por_id = AsyncMock(
@@ -235,10 +268,13 @@ async def test_pedido_recebido_pode_ser_cancelado_antes_do_preparo():
             StatusPedido.cancelado,
         )
     )
+    pedidos_repository.buscar_por_id.return_value.cupom_codigo = "CANCELA10"
+    cupom_service = Mock()
     service = PedidoService(
         pedidos_repository,
         Mock(),
         Mock(),
+        cupom_service=cupom_service,
     )
 
     resultado = await service.atualizar_status(
@@ -248,6 +284,7 @@ async def test_pedido_recebido_pode_ser_cancelado_antes_do_preparo():
 
     assert resultado.status == StatusPedido.cancelado
     pedidos_repository.atualizar_status.assert_awaited_once()
+    cupom_service.estornar_uso.assert_called_once_with("pedido-1")
 
 
 async def test_pedido_em_preparo_nao_pode_ser_cancelado():

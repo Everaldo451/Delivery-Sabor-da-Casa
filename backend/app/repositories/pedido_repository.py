@@ -53,6 +53,13 @@ class PedidosRepository:
         doc["_id"] = resultado.inserted_id
         return self._para_entidade(doc)
 
+    async def remover(self, pedido_id: str) -> bool:
+        oid = _oid(pedido_id)
+        if oid is None:
+            return False
+        resultado = await self._collection.delete_one({"_id": oid})
+        return resultado.deleted_count > 0
+
     async def listar_por_usuario(
         self, usuario_id: str, pagina: int, limite: int
     ) -> list[Pedido]:

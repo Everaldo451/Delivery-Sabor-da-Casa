@@ -9,6 +9,12 @@ from app.database.postgresql.models.cardapio import (
     PratoModel as _PratoModel,
 )
 from app.database.postgresql.models.payment import PaymentModel as _PaymentModel
+from app.database.postgresql.models.cupom import CupomModel as _CupomModel
+from app.database.postgresql.models.cupom_uso import CupomUsoModel as _CupomUsoModel
+from app.database.postgresql.models.favorito import FavoritoModel as _FavoritoModel
+from app.database.postgresql.models.fidelidade import (
+    TransacaoFidelidadeModel as _TransacaoFidelidadeModel,
+)
 from app.database.postgresql.models.user import UserModel as _UserModel
 
 __all__ = ["DATABASE_URL", "create_session", "engine", "get_session"]

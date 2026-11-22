@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from fastapi import HTTPException
 
@@ -15,6 +16,13 @@ from app.schemas.pedidos import (
 )
 from app.repositories.zona_entrega_repository import ZonaEntregaRepository
 from app.services.cardapio_service import CardapioService
+from app.services.cep_service import (
+    CepNaoEncontradoError,
+    ViaCepIndisponivelError,
+    ViaCepService,
+)
+from app.services.cupom_service import CupomService
+from app.services.fidelidade_service import FidelidadeService
 
 
 class PedidoService:
@@ -25,6 +33,9 @@ class PedidoService:
         cardapio_service: CardapioService,
         payment_strategy_factory: PaymentStrategyFactory | None = None,
         pedido_status_strategy_factory: PedidoStatusStrategyFactory | None = None,
+        cupom_service: CupomService | None = None,
+        fidelidade_service: FidelidadeService | None = None,
+        cep_service: ViaCepService | None = None,
     ) -> None:
         self._pedidos_repository = pedidos_repository
         self._zona_entrega_repository = zona_entrega_repository
@@ -35,6 +46,9 @@ class PedidoService:
         self._pedido_status_strategy_factory = (
             pedido_status_strategy_factory or PedidoStatusStrategyFactory()
         )
+        self._cupom_service = cupom_service or CupomService()
+        self._fidelidade_service = fidelidade_service or FidelidadeService()
+        self._cep_service = cep_service or ViaCepService()
 
     def _para_saida(self, pedido: Pedido) -> PedidoOut:
         if pedido.id is None:
@@ -62,6 +76,16 @@ class PedidoService:
         return zonas[0].valor
 
     async def criar_pedido(self, dados: PedidoCreate, usuario: Usuario) -> PedidoOut:
+        cep = dados.endereco_entrega.cep
+        if cep is None:
+            raise HTTPException(422, "CEP do endereco de entrega obrigatorio")
+        try:
+            await self._cep_service.verificar_cep(cep)
+        except CepNaoEncontradoError as exc:
+            raise HTTPException(422, "CEP nao encontrado") from exc
+        except ViaCepIndisponivelError as exc:
+            raise HTTPException(503, "Servico de consulta de CEP indisponivel") from exc
+
         taxa_entrega = await self._calcular_taxa_entrega(dados)
         itens: list[ItemPedido] = []
         for item in dados.itens:
@@ -80,14 +104,35 @@ class PedidoService:
             )
 
         # O total e calculado AQUI, nunca confiando em valores vindos do app
-        subtotal = round(sum(i.preco_unitario * i.quantidade for i in itens), 2)
-        desconto = 0.0  # TODO: aplicar cupom/fidelidade quando esse modulo existir
-        total = round(subtotal - desconto + taxa_entrega, 2)
+        subtotal_decimal = sum(
+            (Decimal(str(item.preco_unitario)) * item.quantidade for item in itens),
+            start=Decimal("0.00"),
+        ).quantize(Decimal("0.01"))
+        desconto_cupom = (
+            self._cupom_service.calcular_desconto(
+                dados.cupom_codigo,
+                subtotal_decimal,
+                usuario.id,
+            )
+            if dados.cupom_codigo is not None
+            else Decimal("0.00")
+        )
+        desconto_fidelidade = self._fidelidade_service.calcular_desconto(
+            usuario.id,
+            dados.pontos_resgatados,
+            subtotal_decimal - desconto_cupom,
+        )
+        desconto_decimal = desconto_cupom + desconto_fidelidade
+        subtotal = float(subtotal_decimal)
+        desconto = float(desconto_decimal)
+        total = round(subtotal_decimal - desconto_decimal + Decimal(str(taxa_entrega)), 2)
 
         agora = datetime.now(timezone.utc)
         strategy = self._payment_strategy_factory.criar(dados.forma_pagamento)
         pedido = Pedido(
             user_id=usuario.id,
+            cupom_codigo=dados.cupom_codigo,
+            pontos_resgatados=dados.pontos_resgatados,
             itens=itens,
             subtotal=subtotal,
             desconto=desconto,
@@ -99,7 +144,29 @@ class PedidoService:
             criado_em=agora,
             atualizado_em=agora,
         )
-        return self._para_saida(await self._pedidos_repository.inserir(pedido))
+        persistido = await self._pedidos_repository.inserir(pedido)
+        cupom_reservado = False
+        try:
+            if persistido.id is None and (dados.pontos_resgatados or dados.cupom_codigo):
+                raise ValueError("Pedido persistido sem identificador")
+            if dados.cupom_codigo:
+                self._cupom_service.registrar_uso(
+                    dados.cupom_codigo, usuario.id, persistido.id, subtotal_decimal
+                )
+                cupom_reservado = True
+            if dados.pontos_resgatados:
+                self._fidelidade_service.resgatar(
+                    usuario.id,
+                    persistido.id,
+                    dados.pontos_resgatados,
+                )
+        except Exception:
+            if cupom_reservado:
+                self._cupom_service.estornar_uso(persistido.id)
+            if persistido.id is not None:
+                await self._pedidos_repository.remover(persistido.id)
+            raise
+        return self._para_saida(persistido)
 
     async def historico(
         self, pagina: int, limite: int, usuario: Usuario
@@ -144,6 +211,13 @@ class PedidoService:
                 f"{pedido.status.value} -> {dados.status.value}",
             )
         atualizado = await self._salvar_status(pedido_id, dados.status)
+        if dados.status == StatusPedido.cancelado and pedido.pontos_resgatados:
+            self._fidelidade_service.estornar_resgate(
+                pedido.user_id,
+                pedido_id,
+            )
+        if dados.status == StatusPedido.cancelado and pedido.cupom_codigo:
+            self._cupom_service.estornar_uso(pedido_id)
         return self._para_saida(atualizado)
 
     async def confirmar_pagamento(self, pedido_id: str) -> PedidoOut:

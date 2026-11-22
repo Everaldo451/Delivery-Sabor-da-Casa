@@ -101,6 +101,11 @@ carrinho. O carrinho expira apos um dia sem atualizacoes. Ele armazena o
 identificador do prato, quantidade e observacao; precos e disponibilidade
 continuam sendo validados ao criar o pedido.
 
+Ao criar um pedido, informe um CEP brasileiro com 8 digitos, com ou sem hifen.
+O backend consulta o ViaCEP e rejeita CEPs nao encontrados antes de persistir
+o pedido. Se o ViaCEP estiver indisponivel, a criacao retorna erro temporario
+e pode ser tentada novamente.
+
 Cardapio: categorias e pratos ficam no PostgreSQL. As categorias iniciais
 `Pratos`, `Bebidas` e `Sobremesas` sao criadas pela migration. As rotas de
 consulta sao `GET /cardapio/categorias`, `GET /cardapio?categoria=Pratos`
@@ -113,3 +118,24 @@ vinculados nao pode ser removida. Imagens enviadas por
 remove-a. O upload recebe os bytes diretamente no corpo e o `Content-Type` deve
 informar o formato. A resposta do prato inclui `imagem: {url, content_type}`;
 os bytes e o tipo MIME ficam no PostgreSQL.
+
+Favoritos: usuário autenticado pode listar seus favoritos com `GET /favoritos`,
+adicionar com `PUT /favoritos/{prato_id}` e remover com
+`DELETE /favoritos/{prato_id}`. A relação usuário-prato é armazenada no
+PostgreSQL; adicionar o mesmo prato novamente não duplica o registro.
+
+Cupons: administradores criam, editam e removem cupons em `/cupons`; a listagem
+`GET /cupons` exibe os cupons ativos e dentro da validade, e `GET /cupons/admin`
+lista todos os cupons para administração. Usuário autenticado
+pode validar um código com `POST /cupons/validar`, enviando código e subtotal.
+Cupons suportam desconto percentual ou valor fixo, subtotal mínimo, período de
+validade e limite máximo para desconto percentual. No pedido, envie
+`cupom_codigo`; o backend calcula o desconto sobre os itens e impede que ele
+ultrapasse o subtotal. `limite_usos` define o total de resgates e `limite_por_usuario` limita o uso por cliente (1 por padrão). `somente_novos_clientes` restringe o cupom a quem ainda não tem pagamento aprovado. O uso é reservado ao criar o pedido e liberado se ele for cancelado.
+
+Fidelidade: `GET /fidelidade` consulta o saldo e
+`GET /fidelidade/transacoes` consulta o extrato. Cada R$ 1,00 em pagamento
+aprovado acumula 1 ponto; 100 pontos valem R$ 1,00 de desconto. Para resgatar,
+envie `pontos_resgatados` ao criar o pedido. O saldo é debitado atomicamente;
+os pontos resgatados são devolvidos se o pedido for cancelado. O extrato SQL
+torna os créditos de pedidos idempotentes.

@@ -7,6 +7,7 @@ from app.routers.pedidos import get_pedido_service
 from app.schemas.payments import CheckoutCreate, PaymentOut
 from app.services.auth_service import AuthService
 from app.services.payment_service import PaymentService
+from app.services.fidelidade_service import FidelidadeService
 
 router = APIRouter(tags=["Checkout"])
 
@@ -17,6 +18,7 @@ payment_service = PaymentService(
     payment_repository,
     pedido_repository,
     get_pedido_service(),
+    fidelidade_service=FidelidadeService(),
 )
 
 
