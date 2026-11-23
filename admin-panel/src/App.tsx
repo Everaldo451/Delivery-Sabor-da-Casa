@@ -5,6 +5,7 @@ import { LoginPage } from './pages/LoginPage'
 import { HomePage } from './pages/HomePage'
 import { OrdersPage } from './pages/OrdersPage'
 import { MenuPage } from './pages/MenuPage'
+import { DeliveryZonesPage } from './pages/DeliveryZonesPage'
 
 function ProtectedLayout() {
   const { isAuthenticated } = useAuth()
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/pedidos" element={<OrdersPage />} />
         <Route path="/cardapio" element={<MenuPage />} />
+        <Route path="/zonas-entrega" element={<DeliveryZonesPage />} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

@@ -129,8 +129,19 @@ Suba os bancos, o Redis e um container da aplicação mantido em espera. O coman
 entrar e executar os próximos passos:
 
 ```powershell
-docker compose -f docker/docker-compose.test.yaml run -d --name backend-teste -p 8000:8000 app sleep infinity
+docker compose -f docker/docker-compose.test.yaml run --build -d --name backend-teste -p 8000:8000 app sleep infinity
 ```
+
+O `--build` recompila a imagem do backend antes de criar o container. Se o
+container `backend-teste` já existir, remova-o antes de executar novamente para
+que ele seja criado com a imagem atualizada:
+
+```powershell
+docker rm -f backend-teste
+```
+
+Esse comando remove somente o container nomeado da aplicação; depois, o
+`docker compose run` inicia novamente a aplicação e suas dependências.
 
 Entre no container:
 

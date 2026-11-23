@@ -171,6 +171,7 @@ async def test_zona_repository_indices_insert_replace_list_and_geo_query(monkeyp
     collection.create_index = AsyncMock()
     collection.insert_one = AsyncMock()
     collection.replace_one = AsyncMock()
+    collection.delete_one = AsyncMock(side_effect=[Mock(deleted_count=0), Mock(deleted_count=1)])
     cursor = AsyncCursor([])
     collection.find = Mock(return_value=cursor)
     monkeypatch.setattr("app.repositories.zona_entrega_repository.get_mongo_db", lambda: {"zona_entrega": collection})
@@ -180,6 +181,8 @@ async def test_zona_repository_indices_insert_replace_list_and_geo_query(monkeyp
     await repository.criar_indice_geografico()
     await repository.inserir(zona)
     await repository.atualizar_ou_inserir(zona)
+    assert await repository.remover("Centro") is False
+    assert await repository.remover("Centro") is True
     assert await repository.listar() == []
     assert await repository.buscar_por_localizacao(CoordenadaGeografica(longitude=-46.65, latitude=-23.45)) == []
     collection.create_index.assert_awaited_once_with([("area", "2dsphere")])
@@ -187,4 +190,5 @@ async def test_zona_repository_indices_insert_replace_list_and_geo_query(monkeyp
     collection.replace_one.assert_awaited_once_with(
         {"nome": "Centro"}, repository._para_documento(zona), upsert=True,
     )
+    assert collection.delete_one.await_args_list[0].args == ({"nome": "Centro"},)
     assert collection.find.call_args_list[1].args[0]["area"]["$geoIntersects"]["$geometry"]["type"] == "Point"

@@ -11,6 +11,7 @@ def include_routers(app: FastAPI) -> None:
     from app.routers.pedidos import router as pedidos_router
     from app.routers.payments import router as payments_router
     from app.routers.users import router as users_router
+    from app.routers.zonas_entrega import router as zonas_entrega_router
 
     app.include_router(auth_router)
     app.include_router(carrinho_router)
@@ -21,3 +22,4 @@ def include_routers(app: FastAPI) -> None:
     app.include_router(pedidos_router)
     app.include_router(payments_router)
     app.include_router(users_router)
+    app.include_router(zonas_entrega_router)

@@ -16,6 +16,7 @@ from app.routers import (
     fidelidade,
     payments,
     pedidos,
+    zonas_entrega,
 )
 
 
@@ -41,7 +42,7 @@ def app(usuario_teste: Usuario) -> FastAPI:
     async def usuario_admin() -> Usuario:
         return usuario_teste
 
-    for module in (cardapio, carrinho, cupons, favoritos, fidelidade, payments, pedidos):
+    for module in (cardapio, carrinho, cupons, favoritos, fidelidade, payments, pedidos, zonas_entrega):
         application.dependency_overrides[module.auth_service.usuario_logado] = usuario_logado
         application.dependency_overrides[module.auth_service.usuario_admin] = usuario_admin
     application.dependency_overrides[auth.auth_service.obter_token] = lambda: "token-teste"

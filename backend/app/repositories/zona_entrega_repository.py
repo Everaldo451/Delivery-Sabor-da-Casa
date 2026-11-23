@@ -39,6 +39,10 @@ class ZonaEntregaRepository:
             upsert=True,
         )
 
+    async def remover(self, nome: str) -> bool:
+        resultado = await self._collection.delete_one({"nome": nome})
+        return resultado.deleted_count > 0
+
     async def listar(self) -> list[ZonaEntrega]:
         cursor = self._collection.find()
         return [self._para_entidade(doc) async for doc in cursor]
