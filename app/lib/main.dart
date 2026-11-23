@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
-import 'theme/app_theme.dart';
+import 'screens/cart_screen.dart';
+import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
+import 'services/store_api.dart';
+import 'theme/app_theme.dart';
 
 void main() => runApp(const SaborDaCasaApp());
 
@@ -9,83 +12,80 @@ class SaborDaCasaApp extends StatelessWidget {
   const SaborDaCasaApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Sabor da Casa',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      home: const LoginScreen(),
-      routes: {
-        '/home': (_) => const CasaShell(),
-      },
-    );
-  }
+  Widget build(BuildContext context) => MaterialApp(
+        title: 'Sabor da Casa',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light,
+        home: const LoginScreen(),
+        routes: {'/home': (_) => const CasaShell()},
+      );
 }
 
 class CasaShell extends StatefulWidget {
   const CasaShell({super.key});
-
   @override
   State<CasaShell> createState() => _CasaShellState();
 }
 
 class _CasaShellState extends State<CasaShell> {
   int _aba = 0;
+  final _telas = const [HomeScreen(), _PedidosScreen(), _PerfilScreen()];
 
-  static const _telas = <Widget>[
-    _Placeholder('Início'),
-    _Placeholder('Cardápio'),
-    _Placeholder('Pedidos'),
-    _Placeholder('Perfil'),
-  ];
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Sabor da Casa')),
-      body: _telas[_aba],
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-        },
-        icon: const Icon(Icons.shopping_bag_outlined),
-        label: const Text('Carrinho'),
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _aba,
-        onDestinationSelected: (i) => setState(() => _aba = i),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Início',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.restaurant_menu_outlined),
-            selectedIcon: Icon(Icons.restaurant_menu),
-            label: 'Cardápio',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.receipt_long_outlined),
-            selectedIcon: Icon(Icons.receipt_long),
-            label: 'Pedidos',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Perfil',
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(
+          title: const Text('Sabor da Casa'),
+          actions: [IconButton(tooltip: 'Carrinho', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen())), icon: const Icon(Icons.shopping_bag_outlined))],
+        ),
+        body: IndexedStack(index: _aba, children: _telas),
+        floatingActionButton: _aba == 0 ? FloatingActionButton.extended(
+          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen())),
+          icon: const Icon(Icons.shopping_bag_outlined), label: const Text('Meu carrinho'),
+        ) : null,
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: _aba,
+          onDestinationSelected: (i) => setState(() => _aba = i),
+          destinations: const [
+            NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Início'),
+            NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Pedidos'),
+            NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Perfil'),
+          ],
+        ),
+      );
 }
-class _Placeholder extends StatelessWidget {
-  const _Placeholder(this.nome);
-  final String nome;
 
+class _PedidosScreen extends StatefulWidget {
+  const _PedidosScreen();
   @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(nome, style: Theme.of(context).textTheme.headlineMedium),
-    );
+  State<_PedidosScreen> createState() => _PedidosScreenState();
+}
+
+class _PedidosScreenState extends State<_PedidosScreen> {
+  late Future<List<Map<String, dynamic>>> _future;
+  Future<List<Map<String, dynamic>>> _buscar() async {
+    final data = StoreApi.instance.accessToken;
+    if (data == null) throw Exception('Entre na sua conta para ver os pedidos.');
+    // GET /pedidos is a customer-scoped endpoint.
+    final result = await StoreApi.instance.requestPedidos();
+    return result;
   }
+  @override
+  void initState() { super.initState(); _future = _buscar(); }
+  @override
+  Widget build(BuildContext context) => FutureBuilder<List<Map<String, dynamic>>>(future: _future, builder: (context, snapshot) {
+    if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+    if (snapshot.hasError) return Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [Text(snapshot.error.toString()), TextButton(onPressed: () => setState(() => _future = _buscar()), child: const Text('Atualizar'))])));
+    final pedidos = snapshot.data ?? [];
+    if (pedidos.isEmpty) return const Center(child: Text('Você ainda não fez pedidos.'));
+    return RefreshIndicator(onRefresh: () async => setState(() => _future = _buscar()), child: ListView(padding: const EdgeInsets.all(16), children: [Text('Seus pedidos', style: Theme.of(context).textTheme.headlineSmall), const SizedBox(height: 16), ...pedidos.map((p) => Card(child: ListTile(leading: const CircleAvatar(child: Icon(Icons.receipt_long)), title: Text('Pedido #${p['id']}'), subtitle: Text('${p['status']} · ${p['itens'] is List ? (p['itens'] as List).length : 0} itens'), trailing: Text('R\$ ${(p['total'] as num).toStringAsFixed(2).replaceAll('.', ',')}'))))]));
+  });
+}
+
+class _PerfilScreen extends StatelessWidget {
+  const _PerfilScreen();
+  @override
+  Widget build(BuildContext context) => Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [const CircleAvatar(radius: 34, child: Icon(Icons.person, size: 36)), const SizedBox(height: 16), Text('Sua conta', style: Theme.of(context).textTheme.titleLarge), const SizedBox(height: 20), OutlinedButton.icon(onPressed: () async {
+    try { await StoreApi.instance.sair(); } catch (_) { StoreApi.instance.limparSessao(); }
+    if (context.mounted) Navigator.pushNamedAndRemoveUntil(context, '/', (_) => false);
+  }, icon: const Icon(Icons.logout), label: const Text('Sair da conta'))])));
 }

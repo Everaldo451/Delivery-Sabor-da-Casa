@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../services/store_api.dart';
 import 'cadastro_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -10,126 +12,97 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _senhaController = TextEditingController();
-  bool _ocultarSenha = true;
+  final _email = TextEditingController();
+  final _senha = TextEditingController();
+  bool _ocultar = true;
+  bool _carregando = false;
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _senhaController.dispose();
+    _email.dispose();
+    _senha.dispose();
     super.dispose();
   }
 
-  void _entrar() {
-    if (_formKey.currentState!.validate()) {
-      // TODO: chamar o backend aqui e só navegar se o login der certo
+  Future<void> _entrar() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _carregando = true);
+    try {
+      await StoreApi.instance.login(_email.text, _senha.text);
+      if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/home');
+    } catch (e) {
+      if (mounted) _mensagem(context, e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _carregando = false);
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    final tema = Theme.of(context);
-
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Sabor da Casa',
-                    textAlign: TextAlign.center,
-                    style: tema.textTheme.headlineMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Entre na sua conta',
-                    textAlign: TextAlign.center,
-                    style: tema.textTheme.bodyLarge,
-                  ),
-                  const SizedBox(height: 32),
-                  TextFormField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'E-mail',
-                      prefixIcon: Icon(Icons.email_outlined),
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (valor) {
-                      if (valor == null || valor.trim().isEmpty) {
-                        return 'Informe o e-mail';
-                      }
-                      if (!valor.contains('@') || !valor.contains('.')) {
-                        return 'E-mail inválido';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _senhaController,
-                    obscureText: _ocultarSenha,
-                    decoration: InputDecoration(
-                      labelText: 'Senha',
-                      prefixIcon: const Icon(Icons.lock_outline),
-                      border: const OutlineInputBorder(),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _ocultarSenha
-                              ? Icons.visibility_off
-                              : Icons.visibility,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _ocultarSenha = !_ocultarSenha;
-                          });
-                        },
+  Widget build(BuildContext context) => Scaffold(
+        body: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 460),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Icon(Icons.restaurant, size: 58, color: Color(0xFFB93A1E)),
+                      const SizedBox(height: 12),
+                      Text('Sabor da Casa', textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.headlineMedium),
+                      const SizedBox(height: 8),
+                      Text('Comida feita com carinho, na sua casa.',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodyLarge),
+                      const SizedBox(height: 32),
+                      TextFormField(
+                        controller: _email,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(labelText: 'E-mail', prefixIcon: Icon(Icons.email_outlined)),
+                        validator: (v) => v == null || !v.contains('@') ? 'Informe um e-mail válido' : null,
                       ),
-                    ),
-                    validator: (valor) {
-                      if (valor == null || valor.isEmpty) {
-                        return 'Informe a senha';
-                      }
-                      if (valor.length < 6) {
-                        return 'A senha deve ter ao menos 6 caracteres';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: _entrar,
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 14),
-                      child: Text('Entrar'),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const CadastroScreen(),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _senha,
+                        obscureText: _ocultar,
+                        decoration: InputDecoration(
+                          labelText: 'Senha',
+                          prefixIcon: const Icon(Icons.lock_outline),
+                          suffixIcon: IconButton(
+                            onPressed: () => setState(() => _ocultar = !_ocultar),
+                            icon: Icon(_ocultar ? Icons.visibility_off : Icons.visibility),
+                          ),
                         ),
-                      );
-                    },
-                    child: const Text('Não tem conta? Cadastre-se'),
+                        validator: (v) => v == null || v.isEmpty ? 'Informe sua senha' : null,
+                        onFieldSubmitted: (_) => _entrar(),
+                      ),
+                      const SizedBox(height: 24),
+                      FilledButton(
+                        onPressed: _carregando ? null : _entrar,
+                        child: _carregando
+                            ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            : const Text('Entrar'),
+                      ),
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: _carregando ? null : () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CadastroScreen())),
+                        child: const Text('Ainda não tem conta? Cadastre-se'),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
         ),
-      ),
-    );
-  }
+      );
+}
+
+void _mensagem(BuildContext context, String texto) {
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(texto)));
 }

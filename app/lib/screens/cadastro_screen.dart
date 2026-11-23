@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../services/store_api.dart';
+
 class CadastroScreen extends StatefulWidget {
   const CadastroScreen({super.key});
 
@@ -9,199 +11,75 @@ class CadastroScreen extends StatefulWidget {
 
 class _CadastroScreenState extends State<CadastroScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nomeController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _telefoneController = TextEditingController();
-  final _senhaController = TextEditingController();
-  final _confirmarSenhaController = TextEditingController();
-  bool _ocultarSenha = true;
-  bool _ocultarConfirmacao = true;
+  final _nome = TextEditingController();
+  final _email = TextEditingController();
+  final _senha = TextEditingController();
+  final _confirmar = TextEditingController();
+  bool _carregando = false;
+  bool _ocultar = true;
 
   @override
   void dispose() {
-    _nomeController.dispose();
-    _emailController.dispose();
-    _telefoneController.dispose();
-    _senhaController.dispose();
-    _confirmarSenhaController.dispose();
+    _nome.dispose(); _email.dispose(); _senha.dispose(); _confirmar.dispose();
     super.dispose();
   }
 
-  void _cadastrar() {
-    if (_formKey.currentState!.validate()) {
-      // TODO: enviar os dados para o backend quando estiver pronto
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cadastro validado (backend pendente)')),
+  Future<void> _cadastrar() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _carregando = true);
+    try {
+      await StoreApi.instance.cadastrar(_nome.text, _email.text, _senha.text);
+      if (mounted) Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
       );
-      Navigator.pop(context);
+    } finally {
+      if (mounted) setState(() => _carregando = false);
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    final tema = Theme.of(context);
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Criar conta')),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Cadastre-se',
-                    textAlign: TextAlign.center,
-                    style: tema.textTheme.headlineMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Preencha seus dados para criar a conta',
-                    textAlign: TextAlign.center,
-                    style: tema.textTheme.bodyLarge,
-                  ),
-                  const SizedBox(height: 32),
-                  TextFormField(
-                    controller: _nomeController,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: const InputDecoration(
-                      labelText: 'Nome completo',
-                      prefixIcon: Icon(Icons.person_outline),
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (valor) {
-                      if (valor == null || valor.trim().isEmpty) {
-                        return 'Informe o nome';
-                      }
-                      if (valor.trim().length < 3) {
-                        return 'O nome deve ter ao menos 3 caracteres';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'E-mail',
-                      prefixIcon: Icon(Icons.email_outlined),
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (valor) {
-                      if (valor == null || valor.trim().isEmpty) {
-                        return 'Informe o e-mail';
-                      }
-                      if (!valor.contains('@') || !valor.contains('.')) {
-                        return 'E-mail inválido';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _telefoneController,
-                    keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(
-                      labelText: 'Telefone',
-                      prefixIcon: Icon(Icons.phone_outlined),
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (valor) {
-                      if (valor == null || valor.trim().isEmpty) {
-                        return 'Informe o telefone';
-                      }
-                      final numeros = valor.replaceAll(RegExp(r'[^0-9]'), '');
-                      if (numeros.length < 10 || numeros.length > 11) {
-                        return 'Telefone inválido (DDD + número)';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _senhaController,
-                    obscureText: _ocultarSenha,
-                    decoration: InputDecoration(
-                      labelText: 'Senha',
-                      prefixIcon: const Icon(Icons.lock_outline),
-                      border: const OutlineInputBorder(),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _ocultarSenha
-                              ? Icons.visibility_off
-                              : Icons.visibility,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _ocultarSenha = !_ocultarSenha;
-                          });
-                        },
-                      ),
-                    ),
-                    validator: (valor) {
-                      if (valor == null || valor.isEmpty) {
-                        return 'Informe a senha';
-                      }
-                      if (valor.length < 6) {
-                        return 'A senha deve ter ao menos 6 caracteres';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _confirmarSenhaController,
-                    obscureText: _ocultarConfirmacao,
-                    decoration: InputDecoration(
-                      labelText: 'Confirmar senha',
-                      prefixIcon: const Icon(Icons.lock_outline),
-                      border: const OutlineInputBorder(),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _ocultarConfirmacao
-                              ? Icons.visibility_off
-                              : Icons.visibility,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _ocultarConfirmacao = !_ocultarConfirmacao;
-                          });
-                        },
-                      ),
-                    ),
-                    validator: (valor) {
-                      if (valor == null || valor.isEmpty) {
-                        return 'Confirme a senha';
-                      }
-                      if (valor != _senhaController.text) {
-                        return 'As senhas não coincidem';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: _cadastrar,
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 14),
-                      child: Text('Cadastrar'),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Já tem conta? Entrar'),
-                  ),
-                ],
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: const Text('Criar conta')),
+        body: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 460),
+                child: Form(
+                  key: _formKey,
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    Text('Boas-vindas!', textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineMedium),
+                    const SizedBox(height: 8),
+                    const Text('Crie sua conta para pedir seus pratos favoritos.', textAlign: TextAlign.center),
+                    const SizedBox(height: 28),
+                    TextFormField(controller: _nome, textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(labelText: 'Nome completo', prefixIcon: Icon(Icons.person_outline)),
+                      validator: (v) => v == null || v.trim().length < 3 ? 'Informe seu nome completo' : null),
+                    const SizedBox(height: 16),
+                    TextFormField(controller: _email, keyboardType: TextInputType.emailAddress,
+                      decoration: const InputDecoration(labelText: 'E-mail', prefixIcon: Icon(Icons.email_outlined)),
+                      validator: (v) => v == null || !v.contains('@') ? 'Informe um e-mail válido' : null),
+                    const SizedBox(height: 16),
+                    TextFormField(controller: _senha, obscureText: _ocultar,
+                      decoration: InputDecoration(labelText: 'Senha (mínimo 8 caracteres)', prefixIcon: const Icon(Icons.lock_outline),
+                        suffixIcon: IconButton(onPressed: () => setState(() => _ocultar = !_ocultar), icon: Icon(_ocultar ? Icons.visibility_off : Icons.visibility))),
+                      validator: (v) => v == null || v.length < 8 ? 'A senha precisa ter ao menos 8 caracteres' : null),
+                    const SizedBox(height: 16),
+                    TextFormField(controller: _confirmar, obscureText: _ocultar,
+                      decoration: const InputDecoration(labelText: 'Confirmar senha', prefixIcon: Icon(Icons.lock_outline)),
+                      validator: (v) => v != _senha.text ? 'As senhas não coincidem' : null),
+                    const SizedBox(height: 24),
+                    FilledButton(onPressed: _carregando ? null : _cadastrar,
+                      child: _carregando ? const CircularProgressIndicator(color: Colors.white) : const Text('Criar minha conta')),
+                    TextButton(onPressed: _carregando ? null : () => Navigator.pop(context), child: const Text('Já tem conta? Entrar')),
+                  ]),
+                ),
               ),
             ),
           ),
         ),
-      ),
-    );
-  }
+      );
 }
