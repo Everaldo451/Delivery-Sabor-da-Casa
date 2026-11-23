@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'screens/cart_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/profile_screen.dart';
+import 'screens/favorites_screen.dart';
 import 'services/store_api.dart';
 import 'theme/app_theme.dart';
 
@@ -29,7 +31,6 @@ class CasaShell extends StatefulWidget {
 
 class _CasaShellState extends State<CasaShell> {
   int _aba = 0;
-  final _telas = const [HomeScreen(), _PedidosScreen(), _PerfilScreen()];
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -37,16 +38,18 @@ class _CasaShellState extends State<CasaShell> {
           title: const Text('Sabor da Casa'),
           actions: [IconButton(tooltip: 'Carrinho', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen())), icon: const Icon(Icons.shopping_bag_outlined))],
         ),
-        body: IndexedStack(index: _aba, children: _telas),
-        floatingActionButton: _aba == 0 ? FloatingActionButton.extended(
-          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen())),
-          icon: const Icon(Icons.shopping_bag_outlined), label: const Text('Meu carrinho'),
-        ) : null,
+        body: IndexedStack(index: _aba, children: [
+          const HomeScreen(),
+          FavoritesScreen(active: _aba == 1),
+          const _PedidosScreen(),
+          const ProfileScreen(),
+        ]),
         bottomNavigationBar: NavigationBar(
           selectedIndex: _aba,
           onDestinationSelected: (i) => setState(() => _aba = i),
           destinations: const [
             NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Início'),
+            NavigationDestination(icon: Icon(Icons.favorite_outline), selectedIcon: Icon(Icons.favorite), label: 'Favoritos'),
             NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Pedidos'),
             NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Perfil'),
           ],
@@ -81,11 +84,3 @@ class _PedidosScreenState extends State<_PedidosScreen> {
   });
 }
 
-class _PerfilScreen extends StatelessWidget {
-  const _PerfilScreen();
-  @override
-  Widget build(BuildContext context) => Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [const CircleAvatar(radius: 34, child: Icon(Icons.person, size: 36)), const SizedBox(height: 16), Text('Sua conta', style: Theme.of(context).textTheme.titleLarge), const SizedBox(height: 20), OutlinedButton.icon(onPressed: () async {
-    try { await StoreApi.instance.sair(); } catch (_) { StoreApi.instance.limparSessao(); }
-    if (context.mounted) Navigator.pushNamedAndRemoveUntil(context, '/', (_) => false);
-  }, icon: const Icon(Icons.logout), label: const Text('Sair da conta'))])));
-}

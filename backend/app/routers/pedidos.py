@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, WebSocket
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, WebSocket
 
 from app.entities.usuario import Usuario
 from app.repositories.pedido_repository import PedidosRepository
@@ -16,6 +16,12 @@ from app.services.cupom_service import CupomService
 from app.services.fidelidade_service import FidelidadeService
 from app.services.pedidos_service import PedidoService
 from app.services.pedido_eventos_service import PedidoEventosService
+from app.services.cep_service import (
+    BrasilApiCepService,
+    BrasilApiIndisponivelError,
+    CepNaoEncontradoError,
+)
+from app.schemas.cep import CepEnderecoOut
 
 router = APIRouter(prefix="/pedidos", tags=["Pedidos"])
 
@@ -32,6 +38,7 @@ pedido_service = PedidoService(
     fidelidade_service=FidelidadeService(),
     eventos_service=pedido_eventos_service,
 )
+cep_service = BrasilApiCepService()
 
 
 def get_pedido_service() -> PedidoService:
@@ -40,6 +47,23 @@ def get_pedido_service() -> PedidoService:
 
 def get_pedido_eventos_service() -> PedidoEventosService:
     return pedido_eventos_service
+
+
+def get_cep_service() -> BrasilApiCepService:
+    return cep_service
+
+
+@router.get("/cep/{cep}", response_model=CepEnderecoOut)
+async def consultar_cep(
+    cep: str = Path(pattern=r"^\d{8}$"),
+    service: BrasilApiCepService = Depends(get_cep_service),
+) -> CepEnderecoOut:
+    try:
+        return CepEnderecoOut.model_validate(await service.consultar(cep))
+    except CepNaoEncontradoError as exc:
+        raise HTTPException(404, "CEP nao encontrado") from exc
+    except BrasilApiIndisponivelError as exc:
+        raise HTTPException(503, "Servico de consulta de CEP indisponivel") from exc
 
 
 @router.post("", response_model=PedidoOut, status_code=201)

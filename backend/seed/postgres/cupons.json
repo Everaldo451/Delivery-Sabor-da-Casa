@@ -1,0 +1,37 @@
+[
+  {
+    "codigo": "BEMVINDO10",
+    "descricao": "10% de desconto para novos clientes",
+    "tipo": "percentual",
+    "valor": "10.00",
+    "subtotal_minimo": "30.00",
+    "desconto_maximo": "15.00",
+    "limite_usos": 1000,
+    "limite_por_usuario": 1,
+    "somente_novos_clientes": true,
+    "ativo": true
+  },
+  {
+    "codigo": "SABOR5",
+    "descricao": "R$ 5,00 de desconto em pedidos a partir de R$ 20,00",
+    "tipo": "valor_fixo",
+    "valor": "5.00",
+    "subtotal_minimo": "20.00",
+    "limite_usos": 1000,
+    "limite_por_usuario": 2,
+    "somente_novos_clientes": false,
+    "ativo": true
+  },
+  {
+    "codigo": "PRATO15",
+    "descricao": "15% de desconto em pedidos a partir de R$ 50,00",
+    "tipo": "percentual",
+    "valor": "15.00",
+    "subtotal_minimo": "50.00",
+    "desconto_maximo": "20.00",
+    "limite_usos": 500,
+    "limite_por_usuario": 1,
+    "somente_novos_clientes": false,
+    "ativo": true
+  }
+]

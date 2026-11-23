@@ -15,6 +15,7 @@ from sqlmodel import Session, select
 
 from app.database.postgresql import create_session
 from app.database.postgresql.models.cardapio import CategoriaModel, PratoModel
+from app.database.postgresql.models.cupom import CupomModel
 from app.database.postgresql.models.user import UserModel
 from app.schemas.users import CadastroUsuario
 
@@ -44,11 +45,25 @@ class PratoSeed(BaseModel):
     disponivel: bool = True
 
 
+class CupomSeed(BaseModel):
+    codigo: str
+    descricao: str
+    tipo: str
+    valor: Decimal
+    subtotal_minimo: Decimal = Decimal("0")
+    desconto_maximo: Decimal | None = None
+    limite_usos: int | None = None
+    limite_por_usuario: int | None = 1
+    somente_novos_clientes: bool = False
+    ativo: bool = True
+
+
 @dataclass(frozen=True)
 class DadosSeed:
     usuarios: list[UsuarioSeed]
     categorias: list[CategoriaSeed]
     pratos: list[PratoSeed]
+    cupons: list[CupomSeed]
 
 
 def _ler_json(nome: str) -> list[dict]:
@@ -64,6 +79,7 @@ def carregar_dados() -> DadosSeed:
         CategoriaSeed.model_validate(item) for item in _ler_json("categorias.json")
     ]
     pratos = [PratoSeed.model_validate(item) for item in _ler_json("pratos.json")]
+    cupons = [CupomSeed.model_validate(item) for item in _ler_json("cupons.json")]
 
     if len(usuarios) != 2 or sum(usuario.is_admin for usuario in usuarios) != 1:
         raise ValueError("O seed deve conter um usuario administrador e um usuario comum")
@@ -84,7 +100,10 @@ def carregar_dados() -> DadosSeed:
         raise ValueError(
             "Categorias ausentes no seed: " + ", ".join(sorted(categorias_inexistentes))
         )
-    return DadosSeed(usuarios=usuarios, categorias=categorias, pratos=pratos)
+    codigos_cupom = [cupom.codigo for cupom in cupons]
+    if len(set(codigos_cupom)) != len(codigos_cupom):
+        raise ValueError("O arquivo cupons.json contem codigos duplicados")
+    return DadosSeed(usuarios=usuarios, categorias=categorias, pratos=pratos, cupons=cupons)
 
 
 def aplicar_seed(
@@ -172,6 +191,17 @@ def aplicar_seed(
                     prato_model.imagem = imagem_bytes
                     prato_model.imagem_content_type = tipo_imagem
 
+        for cupom_config in dados.cupons:
+            cupom_model = session.exec(
+                select(CupomModel).where(CupomModel.codigo == cupom_config.codigo)
+            ).first()
+            campos = cupom_config.model_dump()
+            if cupom_model is None:
+                session.add(CupomModel(**campos))
+            else:
+                for campo, valor in campos.items():
+                    setattr(cupom_model, campo, valor)
+
         session.commit()
     except Exception:
         session.rollback()
@@ -181,6 +211,7 @@ def aplicar_seed(
         "usuarios": len(usuarios_validados),
         "categorias": len(dados.categorias),
         "pratos": len(dados.pratos),
+        "cupons": len(dados.cupons),
     }
 
 
@@ -204,6 +235,7 @@ def main() -> None:
         "Seed PostgreSQL aplicado: "
         f"{resultado['usuarios']} usuarios, "
         f"{resultado['categorias']} categorias e {resultado['pratos']} pratos."
+        f" {resultado['cupons']} cupons."
     )
 
 

@@ -44,7 +44,7 @@ class CarrinhoService:
             None,
         )
         if item_existente is None:
-            carrinho.itens.append(ItemCarrinho.model_validate(dados))
+            carrinho.itens.append(ItemCarrinho.model_validate(dados.model_dump()))
         else:
             nova_quantidade = item_existente.quantidade + dados.quantidade
             if nova_quantidade > 50:

@@ -61,7 +61,7 @@ class _CartScreenState extends State<CartScreen> {
                   ])));
                 })),
                 SafeArea(top: false, child: Container(padding: const EdgeInsets.fromLTRB(20, 16, 20, 16), decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: Color(0xFFE9DFD5)))), child: Column(children: [Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('Subtotal estimado'), Text(_money(_subtotal), style: Theme.of(context).textTheme.titleLarge)]), const SizedBox(height: 12), FilledButton(onPressed: _items.any((i) => _pratos.containsKey(i['prato_id'].toString())) ? () async {
-                  final result = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => CheckoutScreen(itens: _items.where((i) => _pratos.containsKey(i['prato_id'].toString())).toList())));
+                  final result = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => CheckoutScreen(itens: _items.where((i) => _pratos.containsKey(i['prato_id'].toString())).toList(), pratos: _pratos, subtotalEstimado: _subtotal)));
                   if (result == true) _load();
                 } : null, child: const Text('Continuar para entrega e pagamento'))]))),
               ]),

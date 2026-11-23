@@ -13,6 +13,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final _api = StoreApi.instance;
   List<Map<String, dynamic>> _categorias = [];
   List<Map<String, dynamic>> _pratos = [];
+  Set<String> _favoritos = {};
   String? _categoria;
   bool _carregando = true;
   String? _erro;
@@ -23,9 +24,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _carregar() async {
     setState(() { _carregando = true; _erro = null; });
     try {
-      final resultados = await Future.wait([_api.categorias(), _api.cardapio(categoria: _categoria)]);
+      final resultados = await Future.wait([_api.categorias(), _api.cardapio(categoria: _categoria), _api.favoritos()]);
       if (!mounted) return;
-      setState(() { _categorias = resultados[0]; _pratos = resultados[1]; _carregando = false; });
+      setState(() { _categorias = resultados[0]; _pratos = resultados[1]; _favoritos = resultados[2].map((f) => f['prato_id'].toString()).toSet(); _carregando = false; });
     } catch (e) {
       if (mounted) setState(() { _erro = e.toString().replaceFirst('Exception: ', ''); _carregando = false; });
     }
@@ -35,6 +36,18 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       await _api.adicionarItem(prato['id'].toString(), 1);
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${prato['nome']} adicionado ao carrinho')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
+    }
+  }
+
+  Future<void> _alternarFavorito(Map<String, dynamic> prato) async {
+    final id = prato['id'].toString();
+    final removendo = _favoritos.contains(id);
+    try {
+      if (removendo) { await _api.removerFavorito(id); } else { await _api.adicionarFavorito(id); }
+      if (mounted) setState(() { removendo ? _favoritos.remove(id) : _favoritos.add(id); });
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(removendo ? 'Prato removido dos favoritos.' : 'Prato salvo nos favoritos.')));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
     }
@@ -63,16 +76,18 @@ class _HomeScreenState extends State<HomeScreen> {
           if (_carregando) const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()))
           else if (_erro != null) Card(child: Padding(padding: const EdgeInsets.all(20), child: Column(children: [Text(_erro!, textAlign: TextAlign.center), TextButton(onPressed: _carregar, child: const Text('Tentar novamente'))])))
           else if (_pratos.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Text('Nenhum prato disponível nesta categoria.'))
-          else ..._pratos.where((p) => p['disponivel'] == true).map((p) => _PratoCard(prato: p, preco: _preco(p['preco']), adicionar: () => _adicionar(p))),
+          else ..._pratos.where((p) => p['disponivel'] == true).map((p) => _PratoCard(prato: p, preco: _preco(p['preco']), favoritado: _favoritos.contains(p['id'].toString()), favoritar: () => _alternarFavorito(p), adicionar: () => _adicionar(p))),
         ]),
       );
 }
 
 class _PratoCard extends StatelessWidget {
-  const _PratoCard({required this.prato, required this.preco, required this.adicionar});
+  const _PratoCard({required this.prato, required this.preco, required this.adicionar, required this.favoritado, required this.favoritar});
   final Map<String, dynamic> prato;
   final String preco;
   final VoidCallback adicionar;
+  final bool favoritado;
+  final VoidCallback favoritar;
 
   @override
   Widget build(BuildContext context) => Card(
@@ -81,7 +96,7 @@ class _PratoCard extends StatelessWidget {
           Container(width: 66, height: 66, decoration: BoxDecoration(color: const Color(0xFFF7E8DA), borderRadius: BorderRadius.circular(16)), child: const Icon(Icons.restaurant, color: Color(0xFFB93A1E), size: 30)),
           const SizedBox(width: 14),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(prato['nome'].toString(), style: Theme.of(context).textTheme.titleMedium), const SizedBox(height: 4), Text(prato['descricao'].toString(), maxLines: 2, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodySmall), const SizedBox(height: 8), Text(preco, style: const TextStyle(color: Color(0xFFB93A1E), fontWeight: FontWeight.bold))])),
-          IconButton.filled(onPressed: adicionar, icon: const Icon(Icons.add_shopping_cart)),
+          Column(mainAxisSize: MainAxisSize.min, children: [IconButton(onPressed: favoritar, icon: Icon(favoritado ? Icons.favorite : Icons.favorite_border, color: const Color(0xFFB93A1E))), IconButton.filled(onPressed: adicionar, icon: const Icon(Icons.add_shopping_cart))]),
         ])),
       );
 }

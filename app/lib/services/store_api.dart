@@ -118,6 +118,35 @@ class StoreApi {
     return data.cast<Map<String, dynamic>>();
   }
 
+  Future<Map<String, dynamic>> perfil() async =>
+      await _request('GET', '/users/me', autenticado: true)
+          as Map<String, dynamic>;
+
+  Future<List<Map<String, dynamic>>> favoritos() async {
+    final data = await _request('GET', '/favoritos', autenticado: true)
+        as List<dynamic>;
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  Future<void> adicionarFavorito(String pratoId) async {
+    await _request('PUT', '/favoritos/${Uri.encodeComponent(pratoId)}', autenticado: true);
+  }
+
+  Future<void> removerFavorito(String pratoId) async {
+    await _request('DELETE', '/favoritos/${Uri.encodeComponent(pratoId)}', autenticado: true);
+  }
+
+  Future<List<Map<String, dynamic>>> cuponsDisponiveis() async {
+    final data = await _request('GET', '/cupons') as List<dynamic>;
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> validarCupom(String codigo, double subtotal) async =>
+      await _request('POST', '/cupons/validar', autenticado: true, body: {
+        'codigo': codigo,
+        'subtotal': subtotal.toStringAsFixed(2),
+      }) as Map<String, dynamic>;
+
   Future<List<Map<String, dynamic>>> obterCarrinho() async {
     final data = await _request('GET', '/carrinho', autenticado: true)
         as Map<String, dynamic>;
@@ -155,6 +184,16 @@ class StoreApi {
   Future<List<Map<String, dynamic>>> requestPedidos() async {
     final data = await _request('GET', '/pedidos', autenticado: true)
         as List<dynamic>;
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> consultarCep(String cep) async =>
+      await _request('GET', '/pedidos/cep/${Uri.encodeComponent(cep)}')
+          as Map<String, dynamic>;
+
+  Future<List<Map<String, dynamic>>> sugerirEndereco(String consulta) async {
+    final path = '/enderecos/sugestoes?q=${Uri.encodeQueryComponent(consulta)}';
+    final data = await _request('GET', path, autenticado: true) as List<dynamic>;
     return data.cast<Map<String, dynamic>>();
   }
 

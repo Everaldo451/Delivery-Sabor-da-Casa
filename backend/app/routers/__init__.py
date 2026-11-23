@@ -3,6 +3,7 @@ from fastapi import FastAPI
 
 def include_routers(app: FastAPI) -> None:
     from app.routers.auth import router as auth_router
+    from app.routers.enderecos import router as enderecos_router
     from app.routers.carrinho import router as carrinho_router
     from app.routers.cardapio import router as cardapio_router
     from app.routers.cupons import router as cupons_router
@@ -14,6 +15,7 @@ def include_routers(app: FastAPI) -> None:
     from app.routers.zonas_entrega import router as zonas_entrega_router
 
     app.include_router(auth_router)
+    app.include_router(enderecos_router)
     app.include_router(carrinho_router)
     app.include_router(cardapio_router)
     app.include_router(favoritos_router)

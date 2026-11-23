@@ -4,6 +4,7 @@ from sqlalchemy import func
 from sqlmodel import SQLModel, Session, create_engine, select
 from sqlalchemy.pool import StaticPool
 
+from app.database.postgresql.models.cupom import CupomModel
 from app.database.postgresql.models.cardapio import CategoriaModel, PratoModel
 from app.database.postgresql.models.user import UserModel
 from seed.postgres.seed import aplicar_seed, carregar_dados
@@ -51,7 +52,7 @@ def test_aplica_seed_com_dois_usuarios_e_quarenta_pratos(session):
 
     resultado = aplicar_seed(session, dados, senhas)
 
-    assert resultado == {"usuarios": 2, "categorias": 4, "pratos": 40}
+    assert resultado == {"usuarios": 2, "categorias": 4, "pratos": 40, "cupons": 3}
     admin = session.get(UserModel, "seed-admin")
     cliente = session.get(UserModel, "seed-cliente")
     assert admin is not None and admin.is_admin is True
@@ -64,6 +65,7 @@ def test_aplica_seed_com_dois_usuarios_e_quarenta_pratos(session):
     )
     assert session.scalar(select(func.count()).select_from(CategoriaModel)) == 4
     assert session.scalar(select(func.count()).select_from(PratoModel)) == 40
+    assert session.scalar(select(func.count()).select_from(CupomModel)) == 3
     assert session.get(PratoModel, "seed-prato-001").categoria_id is not None
 
 
@@ -80,6 +82,7 @@ def test_aplicar_seed_e_idempotente(session):
     assert session.scalar(select(func.count()).select_from(UserModel)) == 2
     assert session.scalar(select(func.count()).select_from(CategoriaModel)) == 4
     assert session.scalar(select(func.count()).select_from(PratoModel)) == 40
+    assert session.scalar(select(func.count()).select_from(CupomModel)) == 3
 
 
 def test_senhas_ausentes_falham_sem_inserir_dados(session):
