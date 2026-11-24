@@ -132,7 +132,7 @@ class ApiClient {
           body: {'refresh_token': _refreshToken},
         ) as Map<String, dynamic>;
         await definirTokens(tokens);
-        return request(
+        return await request(
           method,
           path,
           body: body,
