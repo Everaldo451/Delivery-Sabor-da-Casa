@@ -16,7 +16,6 @@ class PhotonService:
         parametros = {
             "q": consulta,
             "limit": self.LIMITE_SUGESTOES,
-            "lang": "pt",
             "countrycode": "BR",
         }
         try:

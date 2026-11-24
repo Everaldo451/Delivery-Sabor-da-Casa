@@ -17,9 +17,9 @@ from app.services.fidelidade_service import FidelidadeService
 from app.services.pedidos_service import PedidoService
 from app.services.pedido_eventos_service import PedidoEventosService
 from app.services.cep_service import (
-    BrasilApiCepService,
-    BrasilApiIndisponivelError,
+    CepServiceIndisponivelError,
     CepNaoEncontradoError,
+    ViaCepService,
 )
 from app.schemas.cep import CepEnderecoOut
 
@@ -38,7 +38,7 @@ pedido_service = PedidoService(
     fidelidade_service=FidelidadeService(),
     eventos_service=pedido_eventos_service,
 )
-cep_service = BrasilApiCepService()
+cep_service = ViaCepService()
 
 
 def get_pedido_service() -> PedidoService:
@@ -49,20 +49,20 @@ def get_pedido_eventos_service() -> PedidoEventosService:
     return pedido_eventos_service
 
 
-def get_cep_service() -> BrasilApiCepService:
+def get_cep_service() -> ViaCepService:
     return cep_service
 
 
 @router.get("/cep/{cep}", response_model=CepEnderecoOut)
 async def consultar_cep(
     cep: str = Path(pattern=r"^\d{8}$"),
-    service: BrasilApiCepService = Depends(get_cep_service),
+    service: ViaCepService = Depends(get_cep_service),
 ) -> CepEnderecoOut:
     try:
         return CepEnderecoOut.model_validate(await service.consultar(cep))
     except CepNaoEncontradoError as exc:
         raise HTTPException(404, "CEP nao encontrado") from exc
-    except BrasilApiIndisponivelError as exc:
+    except CepServiceIndisponivelError as exc:
         raise HTTPException(503, "Servico de consulta de CEP indisponivel") from exc
 
 

@@ -19,7 +19,7 @@ from app.repositories.zona_entrega_repository import ZonaEntregaRepository
 from app.services.cardapio_service import CardapioService
 from app.services.cep_service import (
     CepNaoEncontradoError,
-    ViaCepIndisponivelError,
+    CepServiceIndisponivelError,
     ViaCepService,
 )
 from app.services.cupom_service import CupomService
@@ -87,7 +87,7 @@ class PedidoService:
             await self._cep_service.verificar_cep(cep)
         except CepNaoEncontradoError as exc:
             raise HTTPException(422, "CEP nao encontrado") from exc
-        except ViaCepIndisponivelError as exc:
+        except CepServiceIndisponivelError as exc:
             raise HTTPException(503, "Servico de consulta de CEP indisponivel") from exc
 
         taxa_entrega = await self._calcular_taxa_entrega(dados)
